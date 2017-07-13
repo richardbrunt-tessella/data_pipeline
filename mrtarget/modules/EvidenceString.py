@@ -634,6 +634,8 @@ class EvidenceManager():
                 except Exception:
                     logger.exception('Error in publication data injection - skipped for evidence id: '+extended_evidence['id'])
 
+
+
         return Evidence(extended_evidence)
 
     def _get_gene_obj(self, geneid):
@@ -831,10 +833,11 @@ class Evidence(JSONSerializable):
                     self.evidence['evidence']['resource_score']['value']) * frequency
             elif self.evidence['type'] == 'literature':
                 score = float(self.evidence['evidence']['resource_score']['value'])
-                if self.evidence['sourceID'] == 'europepmc':
+                if self.evidence['sourceID'] in ['europepmc', 'nferx']:
                     score = score / 100.
                     if score > 1:
                         score = 1.
+
                 self.evidence['scores']['association_score'] = score
             elif self.evidence['type'] == 'affected_pathway':
                 self.evidence['scores']['association_score'] = float(

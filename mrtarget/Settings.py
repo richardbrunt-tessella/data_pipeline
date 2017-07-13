@@ -253,7 +253,7 @@ class Config():
     REACTOME_PATHWAY_RELATION = ini.get(INI_SECTION, 'reactome_pathways_rel')
     REACTOME_SBML_REST_URI = 'http://www.reactome.org/ReactomeRESTfulAPI/RESTfulWS/sbmlExporter/{0}'
     EVIDENCEVALIDATION_SCHEMA = 'master'
-    EVIDENCEVALIDATION_DATATYPES = ['genetic_association', 'rna_expression', 'genetic_literature', 'affected_pathway', 'somatic_mutation', 'known_drug', 'literature','literature_nferx', 'animal_model']
+    EVIDENCEVALIDATION_DATATYPES = ['genetic_association', 'rna_expression', 'genetic_literature', 'affected_pathway', 'somatic_mutation', 'known_drug', 'literature', 'animal_model']
 
     EVIDENCEVALIDATION_VALIDATOR_SCHEMAS = {
         'genetic_association': 'https://raw.githubusercontent.com/opentargets/json_schema/master/src/genetics.json',
