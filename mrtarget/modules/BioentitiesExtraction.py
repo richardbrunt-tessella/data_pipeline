@@ -6,8 +6,10 @@ from tqdm import tqdm
 import requests
 from mrtarget.common import TqdmToLogger
 import logging
+import zipfile
 import os
 import json
+from io import BytesIO
 import re
 import hashlib
 import datetime
@@ -23,8 +25,6 @@ __email__ = "gautierk@opentargets.org"
 __status__ = "Production"
 
 
-
-
 class ProteinComplexExtractor(object):
 
     def __init__(self):
@@ -33,6 +33,7 @@ class ProteinComplexExtractor(object):
         self.chembl = dict()
         self.corum = dict()
         self.go = dict()
+        self.complex_portal = dict()
 
 
     def parse_ChEMBL(self):
@@ -63,14 +64,41 @@ class ProteinComplexExtractor(object):
                 query = results["page_meta"]["next"]
 
     def parse_CORUM(self):
-        url = 'http://mips.helmholtz-muenchen.de/corum/download/allComplexes.json'
+
+        url = 'http://mips.helmholtz-muenchen.de/corum/download/allComplexes.json.zip'
+        r = requests.get(url)
+        with zipfile.ZipFile(BytesIO(r.content)) as zf:
+            for filename in zf.namelist():
+                print filename
+                results = json.loads(zf.read(filename))
+                total = 0
+                for complex in results:
+                    total+=1
+                    self.corum["%i"%(complex["ComplexID"])] = complex
+                print total
+
+    def parse_ComplexPortal(self):
+
+        url = "http://www.ebi.ac.uk/intact/complex-ws/search/*?format=json&filters=species_f:(%22Homo%20sapiens%22)"
+        print url
         r = requests.get(url)
         results = r.json()
-        total = 0
-        for complex in results:
-            total+=1
-            self.corum["%i"%(complex["ComplexID"])] = complex
-        print total
+        for term in results["elements"]:
+            id = term["complexAC"]
+            print "--- %s ---"%(id)
+            self.complex_portal[id] = list()
+            complexName = term["complexName"]
+            url = "http://www.ebi.ac.uk/intact/complex-ws/details/%s?format=json"%(id)
+            r = requests.get(url)
+            entry = r.json()
+            systematicName = entry["systematicName"]
+            print "\t%s %s"%(complexName, systematicName)
+            self.complex_portal[id].append(complexName)
+            self.complex_portal[id].append(systematicName)
+            for synonym in entry["synonyms"]:
+                print "\t" + synonym
+                self.complex_portal[id].append(synonym)
+
 
     def parse_GO(self, next_url=None):
 
@@ -107,7 +135,7 @@ class ProteinComplexExtractor(object):
         chembl_json = dict()
         for k,v in self.chembl.items():
             chembl_json[v["name"]] = [ k ]
-        with open('/Users/otvisitor/Documents/data/ChEMBL_proteincomplexes.json', 'wb') as outfile:
+        with open('/Users/otvisitor/Documents/data/PROTEINCOMPLEX-CHEMBL.json', 'wb') as outfile:
             json.dump(chembl_json, outfile)
 
         corum_json = dict()
@@ -118,7 +146,7 @@ class ProteinComplexExtractor(object):
                 for synonym in synonyms:
                     corum_json[synonym] = [ k ]
 
-        with open('/Users/otvisitor/Documents/data/CORUM_proteincomplexes.json', 'wb') as outfile:
+        with open('/Users/otvisitor/Documents/data/PROTEINCOMPLEX-CORUM.json', 'wb') as outfile:
             json.dump(corum_json, outfile)
 
         go_json = dict()
@@ -126,15 +154,24 @@ class ProteinComplexExtractor(object):
             for label in v:
                 go_json[label] = [ k ]
 
-        with open('/Users/otvisitor/Documents/data/GO_macromolecularcomplexes.json', 'wb') as outfile:
+        with open('/Users/otvisitor/Documents/data/PROTEINCOMPLEX-GO.json', 'wb') as outfile:
             json.dump(go_json, outfile)
+
+        complex_portal_json = dict()
+        for k, v in self.complex_portal.items():
+            for label in v:
+                complex_portal_json[label] = [k]
+
+        with open('/Users/otvisitor/Documents/data/PROTEINCOMPLEX-COMPLEXPORTAL.json', 'wb') as outfile:
+            json.dump(complex_portal_json, outfile)
 
 
 def main():
     pce_object = ProteinComplexExtractor()
     #pce_object.parse_ChEMBL()
-    #pce_object.parse_CORUM()
+    pce_object.parse_CORUM()
     pce_object.parse_GO()
+    pce_object.parse_ComplexPortal()
     pce_object.generate_bioentities_files()
 
 if __name__ == "__main__":
