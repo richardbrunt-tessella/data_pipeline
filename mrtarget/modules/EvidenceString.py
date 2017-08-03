@@ -1117,7 +1117,10 @@ class EvidenceStringProcess():
         self.es_pub = es_pub
         self.logger = logging.getLogger(__name__)
 
-    def process_all(self, datasources=[], dry_run=False, inject_literature=False):
+    def process_all(self, datasources=[], dry_run=False, inject_literature=False, del_evs = False):
+        if del_evs:
+            self.delete_evidences(datasources=datasources)
+            logger.info("Evidences for {} deleted".format(datasources))
         return self._process_evidence_string_data(datasources=datasources,
                                                   dry_run=dry_run,
                                                   inject_literature=inject_literature)
@@ -1259,3 +1262,9 @@ class EvidenceStringProcess():
                 logger.info("loaded %i ev from db to process" % c)
             yield row
         logger.info("loaded %i ev from db to process" % c)
+
+    def delete_evidences(self,datasources=[]):
+
+        if datasources:
+            self.logger.info('deleting data for datasources %s' % ','.join(datasources))
+            self.es_query.delete_evidence_for_datasources(datasources)
