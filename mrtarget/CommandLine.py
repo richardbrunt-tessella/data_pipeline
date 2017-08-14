@@ -147,10 +147,6 @@ def main():
     parser.add_argument("--schema-version", dest='schema_version',
                         help="set the schema version aka 'branch' name",
                         action='store', default='master')
-    parser.add_argument("--del-evs", dest='del_evs',
-                        help="delete evidences",
-                        action='store_true', default=False)
-
     args = parser.parse_args()
 
     if not args.release_tag and not args.do_nothing:
@@ -287,7 +283,7 @@ def main():
                 targets = EvidenceStringProcess(connectors.es,
                                                 connectors.r_server,
                                                 es_pub=connectors.es_pub).process_all(datasources = args.datasource,
-                                                                          dry_run=args.dry_run,inject_literature=args.inject_literature,del_evs=args.del_evs)
+                                                                          dry_run=args.dry_run,inject_literature=args.inject_literature)
         if args.ass or run_full_pipeline:
             do_all = (AssociationActions.ALL in args.ass) or run_full_pipeline
             if (AssociationActions.PROCESS in args.ass) or do_all:
