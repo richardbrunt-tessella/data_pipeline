@@ -1118,6 +1118,7 @@ class EvidenceStringProcess():
         self.logger = logging.getLogger(__name__)
 
     def process_all(self, datasources=[], dry_run=False, inject_literature=False):
+
         return self._process_evidence_string_data(datasources=datasources,
                                                   dry_run=dry_run,
                                                   inject_literature=inject_literature)
@@ -1126,130 +1127,129 @@ class EvidenceStringProcess():
                                       datasources=[],
                                       dry_run=False,
                                       inject_literature=False):
-        # base_id = 0
-        # err = 0
-        # fix = 0
-        #
-        # logger.debug("Starting Evidence Manager")
-        #
-        # lookup_data_types = [LookUpDataType.TARGET, LookUpDataType.DISEASE, LookUpDataType.ECO]
-        # if inject_literature:
-        #     lookup_data_types = [LookUpDataType.PUBLICATION,LookUpDataType.TARGET, LookUpDataType.DISEASE, LookUpDataType.ECO]
-        #     # lookup_data_types.append(LookUpDataType.PUBLICATION)
-        #
-        # lookup_data = LookUpDataRetriever(self.es,
-        #                                   self.r_server,
-        #                                   data_types=lookup_data_types,
-        #                                   autoload=True,
-        #                                   es_pub = self.es_pub,
-        #                                   ).lookup
-        # # lookup_data.available_genes.load_uniprot2ensembl()
-        # get_evidence_page_size = 5000
-        # '''create and overwrite old data'''
-        # loader = Loader(self.es)
-        # overwrite_indices = not dry_run
-        # if not dry_run:
-        #     overwrite_indices = not bool(datasources)
-        # for k, v in Config.DATASOURCE_TO_INDEX_KEY_MAPPING:
-        #     loader.create_new_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' + v, recreate=overwrite_indices)
-        #     loader.prepare_for_bulk_indexing(loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' + v))
-        # loader.create_new_index(
-        #     Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' + Config.DATASOURCE_TO_INDEX_KEY_MAPPING['default'],
-        #     recreate=overwrite_indices)
-        # loader.prepare_for_bulk_indexing(loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' +
-        #                                                             Config.DATASOURCE_TO_INDEX_KEY_MAPPING['default']))
-        # if datasources and overwrite_indices:
-        #     self.logger.info('deleting data for datasources %s'%','.join(datasources))
-        logger.info('Deleting evidence for {}'.format(datasources))
-        self.es_query.delete_evidence_for_datasources(datasources)
+        base_id = 0
+        err = 0
+        fix = 0
 
-        # '''create queues'''
-        # input_q = multiprocessing.Queue(maxsize=get_evidence_page_size + 1)
-        # output_q = multiprocessing.Queue(maxsize=get_evidence_page_size)
-        # '''create events'''
-        # input_loading_finished = multiprocessing.Event()
-        # output_computation_finished = multiprocessing.Event()
-        # data_storage_finished = multiprocessing.Event()
-        # '''create shared memory objects'''
-        #
-        # input_generated_count = multiprocessing.Value('i', 0)
-        # processing_errors_count = multiprocessing.Value('i', 0)
-        # output_computed_count = multiprocessing.Value('i', 0)
-        # input_processed_count = multiprocessing.Value('i', 0)
-        # submitted_to_storage_count = multiprocessing.Value('i', 0)
-        #
-        # '''create locks'''
-        # data_processing_lock = multiprocessing.Lock()
-        # data_storage_lock = multiprocessing.Lock()
-        #
-        # workers_number = Config.WORKERS_NUMBER
-        #
-        # '''create workers'''
-        # scorers = [EvidenceProcesser(input_q,
-        #                              output_q,
-        #                              lookup_data,
-        #                              input_loading_finished,
-        #                              output_computation_finished,
-        #                              input_generated_count,
-        #                              output_computed_count,
-        #                              processing_errors_count,
-        #                              input_processed_count,
-        #                              data_processing_lock,
-        #                              inject_literature
-        #                              ) for i in range(workers_number)]
-        # # ) for i in range(2)]
-        # for w in scorers:
-        #     w.start()
-        #
-        # storers = [EvidenceStorerWorker(output_q,
-        #                                 output_computation_finished,
-        #                                 data_storage_finished,
-        #                                 submitted_to_storage_count,
-        #                                 output_computed_count,
-        #                                 data_storage_lock,
-        #                                 dry_run,
-        #                                 ) for i in range(workers_number)]
-        # # ) for i in range(1)]
-        # for w in storers:
-        #     w.start()
-        #
-        # targets_with_data = set()
-        # for row in tqdm(self.get_evidence(page_size=get_evidence_page_size, datasources=datasources),
-        #                 desc='Reading available evidence_strings',
-        #                 total=self.es_query.count_validated_evidence_strings(datasources=datasources),
-        #                 unit=' evidence',
-        #                 file=tqdm_out,
-        #                 unit_scale=True):
-        #     ev = Evidence(row['evidence_string'], datasource=row['data_source_name'])
-        #     idev = row['uniq_assoc_fields_hashdig']
-        #     ev.evidence['id'] = idev
-        #     input_q.put((idev, ev))
-        #     input_generated_count.value += 1
-        #     targets_with_data.add(ev.evidence['target']['id'][0])
-        #     if input_generated_count.value % 1e4 == 0:
-        #         logger.info("%i entries submitted for process" % (input_generated_count.value))
-        # input_loading_finished.set()
-        #
-        # '''wait for other processes to finish'''
-        # while not data_storage_finished.is_set():
-        #     time.sleep(.1)
-        # for w in scorers:
-        #     if w.is_alive():
-        #         w.terminate()
-        # for w in storers:
-        #     if w.is_alive():
-        #         time.sleep(.1)
-        #         w.terminate()
-        # logger.info("%i entries processed with %i errors and %i fixes" % (base_id, err, fix))
-        #
-        # loader.close()
-        # logger.info('flushing data to index')
-        # self.es.indices.flush('%s*' % Loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME),
-        #                       wait_if_ongoing=True)
-        #
-        # logger.info('Processed data for %i targets' % len(targets_with_data))
-        #
-        # return list(targets_with_data)
+        logger.debug("Starting Evidence Manager")
+
+        lookup_data_types = [LookUpDataType.TARGET, LookUpDataType.DISEASE, LookUpDataType.ECO]
+        if inject_literature:
+            lookup_data_types = [LookUpDataType.PUBLICATION,LookUpDataType.TARGET, LookUpDataType.DISEASE, LookUpDataType.ECO]
+            # lookup_data_types.append(LookUpDataType.PUBLICATION)
+
+        lookup_data = LookUpDataRetriever(self.es,
+                                          self.r_server,
+                                          data_types=lookup_data_types,
+                                          autoload=True,
+                                          es_pub = self.es_pub,
+                                          ).lookup
+        # lookup_data.available_genes.load_uniprot2ensembl()
+        get_evidence_page_size = 5000
+        '''create and overwrite old data'''
+        loader = Loader(self.es)
+        overwrite_indices = not dry_run
+        if not dry_run:
+            overwrite_indices = not bool(datasources)
+        for k, v in Config.DATASOURCE_TO_INDEX_KEY_MAPPING:
+            loader.create_new_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' + v, recreate=overwrite_indices)
+            loader.prepare_for_bulk_indexing(loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' + v))
+        loader.create_new_index(
+            Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' + Config.DATASOURCE_TO_INDEX_KEY_MAPPING['default'],
+            recreate=overwrite_indices)
+        loader.prepare_for_bulk_indexing(loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' +
+                                                                    Config.DATASOURCE_TO_INDEX_KEY_MAPPING['default']))
+        if datasources and overwrite_indices:
+            self.logger.info('deleting data for datasources %s'%','.join(datasources))
+            self.es_query.delete_evidence_for_datasources(datasources)
+
+        '''create queues'''
+        input_q = multiprocessing.Queue(maxsize=get_evidence_page_size + 1)
+        output_q = multiprocessing.Queue(maxsize=get_evidence_page_size)
+        '''create events'''
+        input_loading_finished = multiprocessing.Event()
+        output_computation_finished = multiprocessing.Event()
+        data_storage_finished = multiprocessing.Event()
+        '''create shared memory objects'''
+
+        input_generated_count = multiprocessing.Value('i', 0)
+        processing_errors_count = multiprocessing.Value('i', 0)
+        output_computed_count = multiprocessing.Value('i', 0)
+        input_processed_count = multiprocessing.Value('i', 0)
+        submitted_to_storage_count = multiprocessing.Value('i', 0)
+
+        '''create locks'''
+        data_processing_lock = multiprocessing.Lock()
+        data_storage_lock = multiprocessing.Lock()
+
+        workers_number = Config.WORKERS_NUMBER
+
+        '''create workers'''
+        scorers = [EvidenceProcesser(input_q,
+                                     output_q,
+                                     lookup_data,
+                                     input_loading_finished,
+                                     output_computation_finished,
+                                     input_generated_count,
+                                     output_computed_count,
+                                     processing_errors_count,
+                                     input_processed_count,
+                                     data_processing_lock,
+                                     inject_literature
+                                     ) for i in range(workers_number)]
+        # ) for i in range(2)]
+        for w in scorers:
+            w.start()
+
+        storers = [EvidenceStorerWorker(output_q,
+                                        output_computation_finished,
+                                        data_storage_finished,
+                                        submitted_to_storage_count,
+                                        output_computed_count,
+                                        data_storage_lock,
+                                        dry_run,
+                                        ) for i in range(workers_number)]
+        # ) for i in range(1)]
+        for w in storers:
+            w.start()
+
+        targets_with_data = set()
+        for row in tqdm(self.get_evidence(page_size=get_evidence_page_size, datasources=datasources),
+                        desc='Reading available evidence_strings',
+                        total=self.es_query.count_validated_evidence_strings(datasources=datasources),
+                        unit=' evidence',
+                        file=tqdm_out,
+                        unit_scale=True):
+            ev = Evidence(row['evidence_string'], datasource=row['data_source_name'])
+            idev = row['uniq_assoc_fields_hashdig']
+            ev.evidence['id'] = idev
+            input_q.put((idev, ev))
+            input_generated_count.value += 1
+            targets_with_data.add(ev.evidence['target']['id'][0])
+            if input_generated_count.value % 1e4 == 0:
+                logger.info("%i entries submitted for process" % (input_generated_count.value))
+        input_loading_finished.set()
+
+        '''wait for other processes to finish'''
+        while not data_storage_finished.is_set():
+            time.sleep(.1)
+        for w in scorers:
+            if w.is_alive():
+                w.terminate()
+        for w in storers:
+            if w.is_alive():
+                time.sleep(.1)
+                w.terminate()
+        logger.info("%i entries processed with %i errors and %i fixes" % (base_id, err, fix))
+
+        loader.close()
+        logger.info('flushing data to index')
+        self.es.indices.flush('%s*' % Loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME),
+                              wait_if_ongoing=True)
+
+        logger.info('Processed data for %i targets' % len(targets_with_data))
+
+        return list(targets_with_data)
 
     def get_evidence(self, page_size=5000, datasources=[]):
 
