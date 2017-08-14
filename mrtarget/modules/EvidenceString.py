@@ -1160,6 +1160,7 @@ class EvidenceStringProcess():
         #                                                             Config.DATASOURCE_TO_INDEX_KEY_MAPPING['default']))
         # if datasources and overwrite_indices:
         #     self.logger.info('deleting data for datasources %s'%','.join(datasources))
+        logger.info('Deleting evidence for {}'.format(datasources))
         self.es_query.delete_evidence_for_datasources(datasources)
 
         # '''create queues'''
