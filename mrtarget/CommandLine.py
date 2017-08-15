@@ -117,6 +117,9 @@ def main():
                         action="append_const", const=DumpActions.ALL)
     parser.add_argument("--datasource", dest='datasource', help="just process data for this datasource. Does not work with all the steps!!",
                         action='append', default=[])
+    parser.add_argument("--disease", dest='disease',
+                        help="just process data for this disease. Does not work with all the steps!!",
+                        action='append', default=[])
     parser.add_argument("--targets", dest='targets', help="just process data for this target. Does not work with all the steps!!",
                         action='append', default=[])
     parser.add_argument("--redis-remote", dest='redis_remote', help="connect to a remote redis",
@@ -282,7 +285,7 @@ def main():
             if (EvidenceStringActions.PROCESS in args.evs) or do_all:
                 targets = EvidenceStringProcess(connectors.es,
                                                 connectors.r_server,
-                                                es_pub=connectors.es_pub).process_all(datasources = args.datasource,
+                                                es_pub=connectors.es_pub).process_all(datasources = args.datasource,disease_id=args.disease,
                                                                           dry_run=args.dry_run,inject_literature=args.inject_literature)
         if args.ass or run_full_pipeline:
             do_all = (AssociationActions.ALL in args.ass) or run_full_pipeline

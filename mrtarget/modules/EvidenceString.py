@@ -1117,14 +1117,16 @@ class EvidenceStringProcess():
         self.es_pub = es_pub
         self.logger = logging.getLogger(__name__)
 
-    def process_all(self, datasources=[], dry_run=False, inject_literature=False):
+    def process_all(self, datasources=[],disease_id = None, dry_run=False, inject_literature=False):
 
         return self._process_evidence_string_data(datasources=datasources,
+                                                  disease_id=None,
                                                   dry_run=dry_run,
                                                   inject_literature=inject_literature)
 
     def _process_evidence_string_data(self,
                                       datasources=[],
+                                      disease_id = None,
                                       dry_run=False,
                                       inject_literature=False):
         base_id = 0
@@ -1214,12 +1216,18 @@ class EvidenceStringProcess():
             w.start()
 
         targets_with_data = set()
-        for row in tqdm(self.get_evidence(page_size=get_evidence_page_size, datasources=datasources),
-                        desc='Reading available evidence_strings',
-                        total=self.es_query.count_validated_evidence_strings(datasources=datasources),
-                        unit=' evidence',
-                        file=tqdm_out,
-                        unit_scale=True):
+        # for row in tqdm(self.get_evidence(page_size=get_evidence_page_size, datasources=datasources),
+        #                 desc='Reading available evidence_strings',
+        #                 total=self.es_query.count_validated_evidence_strings(datasources=datasources),
+        #                 unit=' evidence',
+        #                 file=tqdm_out,
+        #                 unit_scale=True):
+        for row in tqdm(self.get_evidence(page_size=get_evidence_page_size, datasources=datasources, disease_id = disease_id),
+                            desc='Reading available evidence_strings',
+                            total=self.es_query.count_validated_evidence_strings(datasources=datasources,disease_id = disease_id),
+                            unit=' evidence',
+                            file=tqdm_out,
+                            unit_scale=True):
             ev = Evidence(row['evidence_string'], datasource=row['data_source_name'])
             idev = row['uniq_assoc_fields_hashdig']
             ev.evidence['id'] = idev
@@ -1251,10 +1259,10 @@ class EvidenceStringProcess():
 
         return list(targets_with_data)
 
-    def get_evidence(self, page_size=5000, datasources=[]):
+    def get_evidence(self, page_size=5000, datasources=[],disease_id = None):
 
         c = 0
-        for row in self.es_query.get_validated_evidence_strings(size=page_size, datasources=datasources):
+        for row in self.es_query.get_validated_evidence_strings(size=page_size, datasources=datasources, disease_id = disease_id):
             c += 1
             if c % page_size == 0:
                 logger.info("loaded %i ev from db to process" % c)

@@ -256,25 +256,63 @@ class ESQuery(object):
         return AssociationSummary(res)
 
 
-    def get_validated_evidence_strings(self,  size=1000, datasources = []):
+    def get_validated_evidence_strings(self,  size=1000, datasources = [],disease_id = None):
 
 
 
         # https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-multi-get.html
         index_name = Loader.get_versioned_index(Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME+'*')
         doc_type = None
+        if disease_id:
+            self.get_validated_evidence_strings_for_disease(size,datasources,disease_id)
+        else:
+            if datasources:
+                doc_type = datasources
+            res = helpers.scan(client=self.handler,
+                               query={
+                                   "query": {
+                                       "match": {
+                                           "is_valid": {
+                                               "query": True,
+                                               "type": "phrase"
+                                           }
+                                       }
+
+                                   },
+                                   '_source': True,
+                                   'size': size,
+                               },
+                               scroll='12h',
+                               doc_type=doc_type,
+                               index=index_name,
+                               timeout="10m",
+                               )
+
+            # res = list(res)
+            for hit in res:
+                yield hit['_source']
+
+    def get_validated_evidence_strings_for_disease(self,  size=1000, datasources = [], disease_id = ''):
+
+
+
+        # https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-multi-get.html
+        index_name = Loader.get_versioned_index(Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME+'*')
+        doc_type = None
+        if disease_id.startswith('EFO'):
+            disease = {'id': 'http://www.ebi.ac.uk/efo/' + disease_id}
+        elif disease_id.startswith('HP'):
+            disease = {'id': 'http://purl.obolibrary.org/obo/' + disease_id}
+
 
         if datasources:
             doc_type = datasources
         res = helpers.scan(client=self.handler,
                            query={
                                "query": {
-                                   "match": {
-                                       "is_valid": {
-                                           "query": True,
-                                           "type": "phrase"
+                                    "match": {
+                                       "disease_id":  disease_id
                                        }
-                                   }
 
                                },
                                '_source': True,
@@ -290,13 +328,14 @@ class ESQuery(object):
         for hit in res:
             yield hit['_source']
 
-    def count_validated_evidence_strings(self, datasources = []):
+
+    def count_validated_evidence_strings(self, datasources = [],disease_id = None):
 
         doc_type = None
         if datasources:
             doc_type = datasources
 
-        return self.count_elements_in_index(Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME + '*',
+        return self.count_elements_in_index(Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME + '*', disease_id,
                                             doc_type = doc_type)
 
 
@@ -424,11 +463,13 @@ class ESQuery(object):
 
         return dict((hit['_id'],hit['_source']['label']) for hit in res)
 
-    def count_elements_in_index(self, index_name, doc_type=None):
+    def count_elements_in_index(self, index_name, disease_id =None,doc_type=None):
         res = self.handler.search(index=Loader.get_versioned_index(index_name,True),
                                   doc_type=doc_type,
                                   body={"query": {
-                                      "match_all": {}
+                                      "match": {
+                     "disease_id": disease_id
+                 }
                                   },
                                       '_source': False,
                                       'size': 0,
@@ -940,6 +981,7 @@ class ESQuery(object):
                     }
                 }
             }
+
         self.delete_data(Config.ELASTICSEARCH_DATA_INDEX_NAME+'*',
                          query=query)
 
