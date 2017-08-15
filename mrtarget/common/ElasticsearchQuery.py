@@ -264,6 +264,7 @@ class ESQuery(object):
         index_name = Loader.get_versioned_index(Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME+'*')
         doc_type = None
         if disease_id:
+            self.logger.info("Disease {}" .format(disease_id))
             self.get_validated_evidence_strings_for_disease(size,datasources,disease_id)
         else:
             if datasources:
@@ -311,7 +312,7 @@ class ESQuery(object):
                            query={
                                "query": {
                                     "match": {
-                                       "disease_id":  disease_id
+                                       "disease_id":  disease
                                        }
 
                                },

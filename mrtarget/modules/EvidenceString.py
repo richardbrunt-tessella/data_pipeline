@@ -1135,6 +1135,8 @@ class EvidenceStringProcess():
 
         logger.debug("Starting Evidence Manager")
 
+        logger.info("Disease Id : {}".format(disease_id))
+
         lookup_data_types = [LookUpDataType.TARGET, LookUpDataType.DISEASE, LookUpDataType.ECO]
         if inject_literature:
             lookup_data_types = [LookUpDataType.PUBLICATION,LookUpDataType.TARGET, LookUpDataType.DISEASE, LookUpDataType.ECO]
@@ -1262,6 +1264,7 @@ class EvidenceStringProcess():
     def get_evidence(self, page_size=5000, datasources=[],disease_id = None):
 
         c = 0
+
         for row in self.es_query.get_validated_evidence_strings(size=page_size, datasources=datasources, disease_id = disease_id):
             c += 1
             if c % page_size == 0:
