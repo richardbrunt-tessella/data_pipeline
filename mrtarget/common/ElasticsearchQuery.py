@@ -334,8 +334,24 @@ class ESQuery(object):
         doc_type = None
         if datasources:
             doc_type = datasources
+        if disease_id:
 
-        return self.count_elements_in_index(Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME + '*', disease_id,
+
+            res = self.handler.search(index=Loader.get_versioned_index(Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME + '*', True),
+                                      doc_type=doc_type,
+                                      body={"query": {
+                                          "match": {
+                                              "disease_id": disease_id
+                                          }
+                                      },
+                                          '_source': False,
+                                          'size': 0,
+                                      }
+                                      )
+            return res['hits']['total']
+        else:
+
+            return self.count_elements_in_index(Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME + '*',
                                             doc_type = doc_type)
 
 
@@ -463,13 +479,11 @@ class ESQuery(object):
 
         return dict((hit['_id'],hit['_source']['label']) for hit in res)
 
-    def count_elements_in_index(self, index_name, disease_id =None,doc_type=None):
-        res = self.handler.search(index=Loader.get_versioned_index(index_name,True),
+    def count_elements_in_index(self, index_name, doc_type=None):
+        res = self.handler.search(index=Loader.get_versioned_index(index_name, True),
                                   doc_type=doc_type,
                                   body={"query": {
-                                      "match": {
-                     "disease_id": disease_id
-                 }
+                                      "match_all": {}
                                   },
                                       '_source': False,
                                       'size': 0,
