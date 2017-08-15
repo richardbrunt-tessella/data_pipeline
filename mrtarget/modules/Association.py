@@ -562,9 +562,23 @@ class ScoringProcess():
                                    targets = [],
                                    dry_run = False):
 
+
+
+        target_dict = dict()
+        for e in tqdm(self.es_query.get_all_evidence_for_datasource(['23andme'],
+                                                                    fields=[
+                                                                        'target.id'])):
+            target_id = e['target']['id']
+            target_dict[target_id] = 'test'
+
+        targets = list(target_dict.keys())
+        logger.info('Targets list {}'.format(len(targets)))
+
+
         overwrite_indices = not dry_run
         if overwrite_indices:
             overwrite_indices = not bool(targets)
+
 
 
         lookup_data = LookUpDataRetriever(self.es,
