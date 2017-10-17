@@ -73,7 +73,7 @@ class ESQuery(object):
         if not isinstance(ids, list):
             ids = [ids]
 
-        self.get_objects_by_id(ids,
+        return self.get_objects_by_id(ids,
                                Config.ELASTICSEARCH_GENE_NAME_INDEX_NAME,
                                Config.ELASTICSEARCH_GENE_NAME_DOC_NAME,
                                fields)
@@ -528,23 +528,39 @@ class ESQuery(object):
                     else:
                         raise KeyError('document with id %s not found' % (doc['_id']))
 
+    def get_all_distinct_keys(self,
+                              index_name,
+                              field,
+                              max_size=100000,
+                              query =None):
+        if query is None:
+            query = {"match_all": {}}
+
+        res = self.handler.search(index=Loader.get_versioned_index(index_name),
+                                  body={"query": query,
+                                      "size": 0,
+                                      "aggs": {
+                                          "distinct": {
+                                              "terms": {
+                                                  "field": field,
+                                                  "size": max_size
+                                              }
+                                          }
+                                      }
+                                  }
+                                  )
+        for i in res['aggregations']['distinct']['buckets']:
+            yield i['key']
+
 
     def get_all_target_ids_with_evidence_data(self):
-        #TODO: use an aggregation to get those with just data
-        res = helpers.scan(client=self.handler,
-                           query={"query": {
-                               "match_all": {}
-                           },
-                               '_source': False,
-                               'size': 100,
-                           },
-                           scroll='12h',
-                           doc_type=Config.ELASTICSEARCH_GENE_NAME_DOC_NAME,
-                           index=Loader.get_versioned_index(Config.ELASTICSEARCH_GENE_NAME_INDEX_NAME,True),
-                           timeout="30m",
-                           )
-        for target in res:
-            yield  target['_id']
+        return self.get_all_distinct_keys(Config.ELASTICSEARCH_DATA_INDEX_NAME+'*',
+                                          'target.id')
+
+
+    def get_all_disease_ids_with_evidence_data(self):
+        return self.get_all_distinct_keys(Config.ELASTICSEARCH_DATA_INDEX_NAME+'*',
+                                          'disease.id')
 
 
     def get_lit_entities_for_type(self,type):
@@ -565,11 +581,17 @@ class ESQuery(object):
             yield hit['_source']
 
     def get_evidence_for_target_simple(self, target, expected = None):
+        return self.get_evidence_for_field_simple(self, 'target.id', target, expected = expected)
+
+    def get_evidence_for_disease_simple(self, disease, expected = None):
+        return self.get_evidence_for_field_simple(self, 'disease.id', disease, expected = expected)
+
+    def get_evidence_for_field_simple(self, field, value, expected = None):
         query_body = {"query": {
                                 "constant_score": {
                                   "filter": {
                                     "term": {
-                                      "target.id": target
+                                        field: value
                                     }
                                   }
                                 }
@@ -587,7 +609,6 @@ class ESQuery(object):
             query_body['size']=10000
             res = self.handler.search(index=Loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '*',True),
                                       body=query_body,
-                                      routing=target,
                                       )
             for hit in res['hits']['hits']:
                 yield hit['_source']
@@ -599,7 +620,6 @@ class ESQuery(object):
                                timeout="1h",
                                request_timeout=2 * 60 * 60,
                                size=1000,
-                               routing=target,
                                )
             for hit in res:
                 yield hit['_source']

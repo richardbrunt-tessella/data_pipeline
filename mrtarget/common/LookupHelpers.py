@@ -98,6 +98,9 @@ class LookUpDataRetriever(object):
         self._logger = logging.getLogger(__name__)
         tqdm_out = TqdmToLogger(self._logger, level=logging.INFO)
 
+        self.targets_with_data = list(self.esquery.get_all_target_ids_with_evidence_data())
+        self.diseases_with_data = list(self.esquery.get_all_disease_ids_with_evidence_data())
+
         # TODO: run the steps in parallel to speedup loading times
         for dt in data_types:
             self._logger.info("get %s info"%dt)
