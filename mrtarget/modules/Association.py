@@ -333,10 +333,12 @@ class TargetDiseaseEvidenceProducer(RedisQueueWorkerProcess):
                  target_q,
                  r_path,
                  target_disease_pair_q,
+                 target_map_q = None,
                  ):
         super(TargetDiseaseEvidenceProducer, self).__init__(queue_in=target_q,
                                                             redis_path=r_path,
                                                             queue_out=target_disease_pair_q)
+        self.target_map_q = target_map_q
 
     def process(self, data):
         target = data
@@ -361,9 +363,10 @@ class TargetDiseaseEvidenceProducer(RedisQueueWorkerProcess):
                         datasource=evidence['sourceID'],
                         is_direct=efo == evidence['disease']['id'])
                     self.data_cache[key].append(row)
-                target_association_map.add_datasource([evidence['sourceID']],evidence['disease']['id'])
+                target_association_map.add_datasource(evidence['sourceID'],evidence['disease']['id'])
 
             self.produce_pairs()
+            self.target_map_q.put(target_association_map)
 
     def init_data_cache(self,):
         try:
@@ -430,7 +433,7 @@ class TargetMapStorer(RedisQueueWorkerProcess):
 
     def process(self, data):
         as_map = data
-        as_map.encode_all_vectors()
+        as_map.encode_all_vectors(self.lookup_data.diseases_with_data)
         self.diseases|=as_map.overall
         self.loader.put(Config.ELASTICSEARCH_MAP_ASSOCIATION_INDEX_NAME,
                         Config.ELASTICSEARCH_MAP_ASSOCIATION_TARGET_DOC_NAME,
@@ -479,7 +482,7 @@ class DiseaseMapStorer(RedisQueueWorkerProcess):
 
         for evidence in evidence_iterator:
             as_map.add_datasource([evidence['sourceID']], evidence['target']['id'])
-        as_map.encode_all_vectors()
+        as_map.encode_all_vectors(self.lookup_data.targetss_with_data)
         self.diseases|=as_map.overall
         self.loader.put(Config.ELASTICSEARCH_MAP_ASSOCIATION_INDEX_NAME,
                         Config.ELASTICSEARCH_MAP_ASSOCIATION_DISEASE_DOC_NAME,
@@ -753,6 +756,7 @@ class ScoringProcess():
         readers = [TargetDiseaseEvidenceProducer(target_q,
                                                  None,
                                                  target_disease_pair_q,
+                                                 target_map_q
                                                 ) for _ in range(number_of_workers)]
         for w in readers:
             w.start()
