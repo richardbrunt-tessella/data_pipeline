@@ -8,6 +8,7 @@ from collections import Counter
 import addict
 import jsonpickle
 from elasticsearch import helpers, TransportError
+from itertools import islice
 
 from mrtarget.Settings import Config
 from mrtarget.common.DataStructure import SparseFloatDict
@@ -705,15 +706,9 @@ class ESQuery(object):
         :return: generator of documents
         '''
         if isinstance(ids, (list, tuple)):
-            res = self.handler.mget(index=Loader.get_versioned_index(index,True),
-                                    doc_type=doc_type,
-                                    body=dict(ids=ids),
-                                    _source=source,
-                                    _source_exclude=source_exclude,
-                                    realtime=True,
-                                    )
-            if not res:
-                time.sleep(0.1)
+            i = iter(ids)
+            slice = list(islice(i, 100))
+            while slice:
                 res = self.handler.mget(index=Loader.get_versioned_index(index,True),
                                         doc_type=doc_type,
                                         body=dict(ids=ids),
@@ -721,11 +716,21 @@ class ESQuery(object):
                                         _source_exclude=source_exclude,
                                         realtime=True,
                                         )
-            for doc in res['docs']:
-                if doc['found']:
-                    yield doc['_source']
-                else:
-                    raise KeyError('object with id %s not found' % (doc['_id']))
+                if not res:
+                    time.sleep(0.1)
+                    res = self.handler.mget(index=Loader.get_versioned_index(index,True),
+                                            doc_type=doc_type,
+                                            body=dict(ids=ids),
+                                            _source=source,
+                                            _source_exclude=source_exclude,
+                                            realtime=True,
+                                            )
+                for doc in res['docs']:
+                    if doc['found']:
+                        yield doc['_source']
+                    else:
+                        raise KeyError('object with id %s not found' % (doc['_id']))
+                slice = list(islice(i, 100))
 
         else:
 
