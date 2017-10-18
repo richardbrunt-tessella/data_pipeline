@@ -60,7 +60,7 @@ class ESQuery(object):
                                       "match_all": {}
                                     },
                                    '_source': source,
-                                   'size': 100,
+                                   'size': 1000,
                                    },
                             scroll='12h',
                             doc_type=Config.ELASTICSEARCH_GENE_NAME_DOC_NAME,
@@ -70,14 +70,15 @@ class ESQuery(object):
         for hit in res:
             yield hit['_source']
 
-    def get_targets_by_id(self, ids, fields = None):
+    def get_targets_by_id(self, ids, fields = None, chunk_size=100):
         if not isinstance(ids, list):
             ids = [ids]
 
         return self.get_objects_by_id(ids,
                                Config.ELASTICSEARCH_GENE_NAME_INDEX_NAME,
                                Config.ELASTICSEARCH_GENE_NAME_DOC_NAME,
-                               fields)
+                               fields,
+                            chunk_size=chunk_size)
 
     def count_all_targets(self):
 
@@ -582,10 +583,10 @@ class ESQuery(object):
             yield hit['_source']
 
     def get_evidence_for_target_simple(self, target, expected = None):
-        return self.get_evidence_for_field_simple(self, 'target.id', target, expected = expected)
+        return self.get_evidence_for_field_simple('target.id', target, expected = expected)
 
     def get_evidence_for_disease_simple(self, disease, expected = None):
-        return self.get_evidence_for_field_simple(self, 'disease.id', disease, expected = expected)
+        return self.get_evidence_for_field_simple('disease.id', disease, expected = expected)
 
     def get_evidence_for_field_simple(self, field, value, expected = None):
         query_body = {"query": {
@@ -697,6 +698,7 @@ class ESQuery(object):
                           doc_type,
                           source = True,
                           source_exclude=[],
+                          chunk_size =100,
                           realtime = False):
         '''
 
@@ -707,20 +709,20 @@ class ESQuery(object):
         '''
         if isinstance(ids, (list, tuple)):
             i = iter(ids)
-            slice = list(islice(i, 100))
+            slice = list(islice(i, chunk_size))
             while slice:
                 res = self.handler.mget(index=Loader.get_versioned_index(index,True),
                                         doc_type=doc_type,
-                                        body=dict(ids=ids),
+                                        body=dict(ids=slice),
                                         _source=source,
                                         _source_exclude=source_exclude,
                                         realtime=True,
                                         )
                 if not res:
-                    time.sleep(0.1)
+                    time.sleep(1)
                     res = self.handler.mget(index=Loader.get_versioned_index(index,True),
                                             doc_type=doc_type,
-                                            body=dict(ids=ids),
+                                            body=dict(ids=slice),
                                             _source=source,
                                             _source_exclude=source_exclude,
                                             realtime=True,
@@ -730,7 +732,7 @@ class ESQuery(object):
                         yield doc['_source']
                     else:
                         raise KeyError('object with id %s not found' % (doc['_id']))
-                slice = list(islice(i, 100))
+                slice = list(islice(i, chunk_size))
 
         else:
 
