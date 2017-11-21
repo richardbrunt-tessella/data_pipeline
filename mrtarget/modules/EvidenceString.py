@@ -785,6 +785,8 @@ class Evidence(JSONSerializable):
                     else:
 
                         g2v_score = self.evidence['evidence']['gene2variant']['resource_score']['value']
+
+                        # compute score based on its type (pvalue or something else as score value)
                         if self.evidence['evidence']['variant2disease']['resource_score']['type'] == 'pvalue':
                             # if self.evidence['sourceID']=='gwas_catalog':#temporary fix
                             #     v2d_score = self._get_score_from_pvalue_linear(float(self.evidence[
@@ -796,12 +798,21 @@ class Evidence(JSONSerializable):
                             v2d_score = self.evidence['evidence']['variant2disease']['resource_score']['value']
                         else:
                             v2d_score = 0.
+
+                        # compute based on evidence source
                         if self.evidence['sourceID'] == 'gwas_catalog':
                             sample_size = self.evidence['evidence']['variant2disease']['gwas_sample_size']
                             score = self._score_gwascatalog(
                                 self.evidence['evidence']['variant2disease']['resource_score']['value'],
                                 sample_size,
                                 g2v_score)
+                        if self.evidence['sourceID'] == 'postgap':
+                            # this is per study fixed gotten from gwas catalog
+                            postgap_sample_size = self.evidence['evidence']['variant2disease']['gwas_sample_size']
+                            postgap_pvalue = self.evidence['evidence']['variant2disease']['resource_score']['value']
+
+                            score = self._score_postgap(postgap_pvalue, postgap_sample_size, g2v_score)
+
                         else:
                             score = g2v_score * v2d_score
                 else:
@@ -925,6 +936,16 @@ class Evidence(JSONSerializable):
 
         normalised_pvalue = self._get_score_from_pvalue_linear(pvalue, range_min=1, range_max=1e-15)
 
+        normalised_sample_size = DataNormaliser.renormalize(sample_size, [0, 5000], [0, 1])
+
+        score = normalised_pvalue * normalised_sample_size * severity
+
+        # logger.debug("gwas score: %f | pvalue %f %f | sample size%f %f |severity %f" % (score, pvalue,
+        # normalised_pvalue, sample_size,normalised_sample_size, severity))
+        return score
+
+    def _score_postgap(self, pvalue, sample_size, severity):
+        normalised_pvalue = self._get_score_from_pvalue_linear(pvalue, range_min=1, range_max=1e-15)
         normalised_sample_size = DataNormaliser.renormalize(sample_size, [0, 5000], [0, 1])
 
         score = normalised_pvalue * normalised_sample_size * severity
