@@ -25,6 +25,50 @@ class AssociationActions(Actions):
     PROCESS = 'process'
     UPLOAD = 'upload'
 
+class AssociationMap(JSONSerializable):
+    '''
+    stores al the details for "target to disease" and "disease to targets" links
+    as  overall or broken down by datasource and datatype
+    '''
+
+    def __init__(self,
+                 id,
+                 label=None,
+                 **kwargs):
+        self.id = id
+        self.label = label
+        self._generate_data_container()
+        self.__dict__.update(**kwargs)
+
+    def _generate_data_container(self):
+        self.overall = set()
+        self.datatype = {}
+        self.datasource = {}
+
+    def add_datasource(self, ds, entity):
+        if ds not in self.datasource:
+            self.datasource[ds]=set()
+        self.datasource[ds].add(entity)
+        dt =Config.DATASOURCE_TO_DATATYPE_MAPPING[ds]
+        if dt not in self.datatype:
+            self.datatype[dt]=set()
+        self.datatype[dt].add(entity)
+        self.overall.add(entity)
+
+    def encode_all_vectors(self, id_order):
+        self.overall_vector = self.encode_vector(self.overall, id_order)
+        self.datatype_vector = {}
+        for dt in self.datatype:
+            self.datatype_vector[dt] = self.encode_vector(self.datatype[dt], id_order)
+        self.datasource_vector = {}
+        for ds in self.datasource:
+            self.datasource_vector[ds] = self.encode_vector(self.datasource[ds], id_order)
+
+    @staticmethod
+    def encode_vector(v, labels):
+        return ' '.join([i if i in v else 'n'+i for i in labels])
+
+
 
 class AssociationScore(JSONSerializable):
 
@@ -294,14 +338,16 @@ class TargetDiseaseEvidenceProducer(RedisQueueWorkerProcess):
                  target_q,
                  r_path,
                  target_disease_pair_q,
+                 target_map_q = None,
                  ):
         super(TargetDiseaseEvidenceProducer, self).__init__(queue_in=target_q,
                                                             redis_path=r_path,
                                                             queue_out=target_disease_pair_q)
+        self.target_map_q = target_map_q
 
     def process(self, data):
         target = data
-
+        target_association_map = AssociationMap(target)
         available_evidence = self.es_query.count_evidence_for_target(target)
         if available_evidence:
             self.init_data_cache()
@@ -322,8 +368,10 @@ class TargetDiseaseEvidenceProducer(RedisQueueWorkerProcess):
                         datasource=evidence['sourceID'],
                         is_direct=efo == evidence['disease']['id'])
                     self.data_cache[key].append(row)
+                target_association_map.add_datasource(evidence['sourceID'],evidence['disease']['id'])
 
             self.produce_pairs()
+            self.target_map_q.put(target_association_map)
 
     def init_data_cache(self,):
         try:
@@ -357,6 +405,102 @@ class TargetDiseaseEvidenceProducer(RedisQueueWorkerProcess):
 
 
 
+class TargetMapStorer(RedisQueueWorkerProcess):
+    '''
+    this storer takes all the targets to disease maps
+    store them in elasticsearch
+    collect the diseases the targets are linked to
+    put the diseases in a queue for the inverse map to be processed
+    '''
+
+    def __init__(self,
+                 target_map_q,
+                 r_path,
+                 disease_q,
+                 lookup_data,
+                 chunk_size = 1e4,
+                 dry_run = False,
+                 ):
+        super(TargetMapStorer, self).__init__(queue_in=target_map_q,
+                                            redis_path=r_path,
+                                            queue_out=disease_q)
+        self.lookup_data = lookup_data
+        self.chunk_size = chunk_size
+        self.dry_run = dry_run
+        self.loader = None
+        self.diseases = set()
+
+    def init(self):
+        super(TargetMapStorer, self).init()
+        self.lookup_data.set_r_server(self.r_server)
+        self.loader = Loader(chunk_size=self.chunk_size,
+                             dry_run=self.dry_run)
+
+    def close(self):
+        for disease in self.diseases:
+            self.put_into_queue_out(disease)
+        self.queue_out.set_submission_finished()
+        super(TargetMapStorer, self).close()
+        self.loader.close()
+
+    def process(self, data):
+        as_map = data
+        as_map.encode_all_vectors(self.lookup_data.diseases_with_data)
+        self.diseases|=as_map.overall
+        self.loader.put(Config.ELASTICSEARCH_MAP_ASSOCIATION_INDEX_NAME,
+                        Config.ELASTICSEARCH_MAP_ASSOCIATION_TARGET_DOC_NAME,
+                        as_map.id,
+                        as_map
+                        )
+
+class DiseaseMapStorer(RedisQueueWorkerProcess):
+    '''
+    this storer takes all the diseases
+    builds disease to target maps
+    stores them in elasticsearch
+    '''
+
+    def __init__(self,
+                 disease_q,
+                 r_path,
+                 queue_out,
+                 lookup_data,
+                 chunk_size = 1e4,
+                 dry_run = False,
+                 ):
+        super(DiseaseMapStorer, self).__init__(queue_in=disease_q,
+                                            redis_path=r_path,
+                                            queue_out=queue_out)
+        self.lookup_data = lookup_data
+        self.chunk_size = chunk_size
+        self.dry_run = dry_run
+        self.loader = None
+
+    def init(self):
+        super(DiseaseMapStorer, self).init()
+        self.lookup_data.set_r_server(self.r_server)
+        self.loader = Loader(chunk_size=self.chunk_size,
+                             dry_run=self.dry_run)
+
+    def close(self):
+
+        super(DiseaseMapStorer, self).close()
+        self.loader.close()
+
+    def process(self, data):
+        disease_id = data
+        as_map = AssociationMap(disease_id)
+        evidence_iterator = self.es_query.get_evidence_for_disease_simple(disease_id)
+
+        for evidence in evidence_iterator:
+            as_map.add_datasource([evidence['sourceID']], evidence['target']['id'])
+        as_map.encode_all_vectors(self.lookup_data.targetss_with_data)
+        self.diseases|=as_map.overall
+        self.loader.put(Config.ELASTICSEARCH_MAP_ASSOCIATION_INDEX_NAME,
+                        Config.ELASTICSEARCH_MAP_ASSOCIATION_DISEASE_DOC_NAME,
+                        as_map.id,
+                        as_map
+                        )
 
 class ScoreProducer(RedisQueueWorkerProcess):
 
@@ -529,6 +673,8 @@ class ScoringProcess():
         if overwrite_indices:
             overwrite_indices = not bool(targets)
 
+        if not targets:
+            targets =  list(self.es_query.get_all_target_ids_with_evidence_data())
 
         lookup_data = LookUpDataRetriever(self.es,
                                           self.r_server,
@@ -543,8 +689,7 @@ class ScoringProcess():
                                           or len(targets) > 100
                                           else False).lookup
 
-        if not targets:
-            targets = list(self.es_query.get_all_target_ids_with_evidence_data())
+
 
         '''create queues'''
         number_of_workers = Config.WORKERS_NUMBER
@@ -554,26 +699,42 @@ class ScoringProcess():
         if targets and len(targets) < number_of_workers:
             number_of_workers = len(targets)
         target_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|target_q',
-                              max_size=number_of_workers * queue_per_worker,
-                              job_timeout=3600,
+                              max_size=len(targets),
+                              job_timeout=60*60*24,
+                              r_server=self.r_server,
+                              serialiser=None,
+                              total=len(targets))
+        disease_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|disease_q',
+                              max_size=len(lookup_data.diseases_with_data),
+                              job_timeout=60*60*24,
+                              r_server=self.r_server,
+                              serialiser=None,
+                              )
+
+        target_map_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|target_map_q',
+                              max_size=len(targets),
+                              job_timeout=60*60*24,
                               r_server=self.r_server,
                               serialiser='jsonpickle',
                               total=len(targets))
+
         target_disease_pair_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|target_disease_pair_q',
                                            max_size=queue_per_worker * number_of_storers,
                                            job_timeout=1200,
                                            batch_size=10,
                                            r_server=self.r_server,
                                            serialiser='jsonpickle')
-        score_data_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|score_data_q',
-                                  max_size=queue_per_worker * number_of_storers,
-                                  job_timeout=1200,
-                                  batch_size=10,
-                                  r_server=self.r_server,
-                                  serialiser='jsonpickle')
+        # score_data_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|score_data_q',
+        #                           max_size=queue_per_worker * number_of_storers,
+        #                           job_timeout=1200,
+        #                           batch_size=10,
+        #                           r_server=self.r_server,
+        #                           serialiser='jsonpickle')
 
         q_reporter = RedisQueueStatusReporter([target_q,
                                                target_disease_pair_q,
+                                               target_map_q,
+                                               disease_q,
                                                # score_data_q
                                                ],
                                               interval=30,
@@ -607,9 +768,26 @@ class ScoringProcess():
         readers = [TargetDiseaseEvidenceProducer(target_q,
                                                  None,
                                                  target_disease_pair_q,
+                                                 target_map_q
                                                 ) for _ in range(number_of_workers)]
         for w in readers:
             w.start()
+
+        '''start  maps storers'''
+        tm_storer = TargetMapStorer(target_map_q,
+                                    None,
+                                    disease_q,
+                                    lookup_data=lookup_data,
+                                    dry_run=dry_run
+                                    )
+        tm_storer.start()
+        dm_storer = DiseaseMapStorer(disease_q,
+                                    None,
+                                    None,
+                                    lookup_data=lookup_data,
+                                    dry_run=dry_run
+                                    )
+        dm_storer.start()
 
 
         self.es_loader.create_new_index(Config.ELASTICSEARCH_DATA_ASSOCIATION_INDEX_NAME, recreate=overwrite_indices)
@@ -630,6 +808,9 @@ class ScoringProcess():
             w.join()
         for w in scorers:
             w.join()
+        tm_storer.join()
+        dm_storer.join()
+
 #         for w in storers:
 #             w.join()
 

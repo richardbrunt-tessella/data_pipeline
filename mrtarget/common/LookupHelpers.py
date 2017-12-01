@@ -36,6 +36,8 @@ class LookUpData():
         self.available_eco_objects = None
         self.chembl = None
         self.available_publications = None
+        self.targets_with_data = None
+        self.diseases_with_data = None
 
     def set_r_server(self, r_server):
         self.logger.debug('setting r_server to all lookup tables from external r_server')
@@ -98,6 +100,9 @@ class LookUpDataRetriever(object):
         self.lookup = LookUpData()
         self._logger = logging.getLogger(__name__)
         tqdm_out = TqdmToLogger(self._logger, level=logging.INFO)
+
+        self.lookup.targets_with_data = list(self.esquery.get_all_target_ids_with_evidence_data())
+        self.lookup.diseases_with_data = list(self.esquery.get_all_disease_ids_with_evidence_data())
 
         # TODO: run the steps in parallel to speedup loading times
         for dt in data_types:
