@@ -18,7 +18,7 @@ http://purl.obolibrary.org/obo/SO_0001621	NMD_transcript_variant	0.65
 http://purl.obolibrary.org/obo/SO_0001623	5_prime_UTR_variant	0.65
 http://purl.obolibrary.org/obo/SO_0001624	3_prime_UTR_variant	0.65
 http://purl.obolibrary.org/obo/SO_0001626	incomplete_terminal_codon_variant	0.9
-http://purl.obolibrary.org/obo/SO_0001627	intron_variant	0.65
+http://purl.obolibrary.org/obo/SO_0001627	intron_variant	0.6
 http://purl.obolibrary.org/obo/SO_0001628	intergenic_variant	0.5
 http://purl.obolibrary.org/obo/SO_0001630	splice_region_variant	0.95
 http://purl.obolibrary.org/obo/SO_0001631	upstream_gene_variant	0.6
@@ -26,7 +26,7 @@ http://purl.obolibrary.org/obo/SO_0001632	downstream_gene_variant	0.6
 http://purl.obolibrary.org/obo/SO_0001782	TF_binding_site_variant	0.6
 http://purl.obolibrary.org/obo/SO_0001792	non_coding_transcript_exon_variant	0.65
 http://purl.obolibrary.org/obo/SO_0001818	protein_altering_variant	0.7
-http://purl.obolibrary.org/obo/SO_0001819	synonymous_variant	0.65
+http://purl.obolibrary.org/obo/SO_0001819	synonymous_variant	0.6
 http://purl.obolibrary.org/obo/SO_0001821	inframe_insertion	0.7
 http://purl.obolibrary.org/obo/SO_0001822	inframe_deletion	0.7
 http://purl.obolibrary.org/obo/SO_0001825	conservative_inframe_deletion	0.5
