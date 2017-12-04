@@ -19,7 +19,7 @@ from mrtarget.common.Redis import RedisQueueStatusReporter, RedisQueueWorkerProc
 
 from mrtarget.Settings import Config
 from addict import Dict
-from mrtarget.common.DataStructure import JSONSerializable, json_serialize, PipelineEncoder
+from mrtarget.common.DataStructure import json_serialize, PipelineEncoder, AddictSerializable
 import pprint
 
 
@@ -45,20 +45,13 @@ def reliability_from_text(key):
     return reliability_translation[key]
 
 
-class HPAExpression(Dict, JSONSerializable):
+class HPAExpression(AddictSerializable):
     def __init__(self, *args, **kwargs):
         super(HPAExpression, self).__init__(*args, **kwargs)
-        if 'data_release' not in self:
-            self.data_release = Config.RELEASE_VERSION
 
-        if 'tissues' not in self:
-            self.tissues = []
-
-        if 'cancer' not in self:
-            self.cancer = Dict()
-
-        if 'subcellular_location' not in self:
-            self.subcellular_location = {}
+        self._add_kv_if('tissues', [])
+        self._add_kv_if('cancer', {})
+        self._add_kv_if('subcellular_location', {})
 
     def set_id(self, gene_id):
         self.gene = gene_id
@@ -121,23 +114,6 @@ class HPAExpression(Dict, JSONSerializable):
             tissue.rna = HPAExpression.new_tissue_rna()
 
         return tissue
-
-    def stamp_data_release(self):
-        self.data_release = Config.RELEASE_VERSION
-
-    def to_json(self):
-        self.stamp_data_release()
-        return json.dumps(self.to_dict(),
-                          default=json_serialize,
-                          sort_keys=True,
-                          # indent=4,
-                          cls=PipelineEncoder)
-
-    def load_json(self, data):
-        try:
-            self.update(json.loads(data))
-        except Exception as e:
-            raise e
 
 
 def format_expression(rec):

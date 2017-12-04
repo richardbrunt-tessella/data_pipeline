@@ -6,7 +6,7 @@ from mrtarget.modules.Association import AssociationMap
 class AssociationMapTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.as_map = AssociationMap('testid')
+        cls.as_map = AssociationMap(id='testid')
         cls.as_map.add_datasource('chembl', 'test1')
         cls.as_map.add_datasource('chembl', 'test2')
         cls.as_map.add_datasource('chembl', 'test3')

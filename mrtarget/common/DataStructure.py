@@ -7,7 +7,6 @@ from mrtarget.Settings import Config
 from addict import Dict
 
 
-
 class PipelineEncoder(json.JSONEncoder):
     def default(self, o):
         try:
@@ -52,6 +51,31 @@ class JSONSerializable(object):
 
     def stamp_data_release(self):
         self.__dict__['data_release'] = Config.RELEASE_VERSION.split('-')[-1]
+
+
+class AddictSerializable(Dict, JSONSerializable):
+    def __init__(self, *args, **kwargs):
+        super(AddictSerializable, self).__init__(*args, **kwargs)
+        self._add_kv_if('data_release', Config.RELEASE_VERSION)
+
+    def stamp_data_release(self):
+        self.data_release = Config.RELEASE_VERSION
+
+    def to_json(self):
+        self.stamp_data_release()
+        return json.dumps(self.to_dict(), default=json_serialize,
+                            sort_keys=False,  # indent=4,
+                            cls=PipelineEncoder)
+
+    def load_json(self, data):
+        try:
+            self.update(json.loads(data))
+        except Exception as e:
+            raise e
+
+    def _add_kv_if(self, k, v):
+        if k not in self:
+            self[k] = v
 
 
 class TreeNode(object):

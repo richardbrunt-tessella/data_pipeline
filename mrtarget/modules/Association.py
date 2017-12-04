@@ -5,7 +5,7 @@ from tqdm import tqdm
 from mrtarget.Settings import Config
 from mrtarget.common import Actions
 from mrtarget.common import TqdmToLogger
-from mrtarget.common.DataStructure import JSONSerializable, denormDict
+from mrtarget.common.DataStructure import JSONSerializable, denormDict, AddictSerializable
 from mrtarget.common.ElasticsearchLoader import Loader
 from mrtarget.common.ElasticsearchQuery import ESQuery
 from mrtarget.common.LookupHelpers import LookUpDataRetriever, LookUpDataType
@@ -25,30 +25,28 @@ class AssociationActions(Actions):
     PROCESS = 'process'
     UPLOAD = 'upload'
 
-class AssociationMap(JSONSerializable):
-    '''
+
+class AssociationMap(AddictSerializable):
+    """
     stores al the details for "target to disease" and "disease to targets" links
     as  overall or broken down by datasource and datatype
-    '''
+    """
 
-    def __init__(self,
-                 id,
-                 label=None,
-                 **kwargs):
+    def __init__(self, id, *args, **kwargs):
+        super(AssociationMap, self).__init__(*args, **kwargs)
         self.id = id
-        self.label = label
         self._generate_data_container()
-        self.__dict__.update(**kwargs)
 
     def _generate_data_container(self):
-        self.overall = set()
-        self.datatype = {}
-        self.datasource = {}
+        self._add_kv_if('overall', set())
+        self._add_kv_if('datatype', {})
+        self._add_kv_if('datasource', {})
 
     def add_datasource(self, ds, entity):
         if ds not in self.datasource:
             self.datasource[ds]=set()
         self.datasource[ds].add(entity)
+
         dt =Config.DATASOURCE_TO_DATATYPE_MAPPING[ds]
         if dt not in self.datatype:
             self.datatype[dt]=set()
@@ -330,8 +328,6 @@ class Scorer():
         return
 
 
-
-
 class TargetDiseaseEvidenceProducer(RedisQueueWorkerProcess):
 
     def __init__(self,
@@ -347,7 +343,7 @@ class TargetDiseaseEvidenceProducer(RedisQueueWorkerProcess):
 
     def process(self, data):
         target = data
-        target_association_map = AssociationMap(target)
+        target_association_map = AssociationMap(id=target)
         available_evidence = self.es_query.count_evidence_for_target(target)
         if available_evidence:
             self.init_data_cache()
@@ -404,7 +400,6 @@ class TargetDiseaseEvidenceProducer(RedisQueueWorkerProcess):
         super(TargetDiseaseEvidenceProducer, self).close()
 
 
-
 class TargetMapStorer(RedisQueueWorkerProcess):
     '''
     this storer takes all the targets to disease maps
@@ -453,6 +448,7 @@ class TargetMapStorer(RedisQueueWorkerProcess):
                         as_map
                         )
 
+
 class DiseaseMapStorer(RedisQueueWorkerProcess):
     '''
     this storer takes all the diseases
@@ -489,33 +485,24 @@ class DiseaseMapStorer(RedisQueueWorkerProcess):
 
     def process(self, data):
         disease_id = data
-        as_map = AssociationMap(disease_id)
+        as_map = AssociationMap(id=disease_id)
         evidence_iterator = self.es_query.get_evidence_for_disease_simple(disease_id)
 
         for evidence in evidence_iterator:
             as_map.add_datasource([evidence['sourceID']], evidence['target']['id'])
         as_map.encode_all_vectors(self.lookup_data.targetss_with_data)
-        self.diseases|=as_map.overall
+        self.diseases |= as_map.overall
         self.loader.put(Config.ELASTICSEARCH_MAP_ASSOCIATION_INDEX_NAME,
                         Config.ELASTICSEARCH_MAP_ASSOCIATION_DISEASE_DOC_NAME,
                         as_map.id,
                         as_map
                         )
 
+
 class ScoreProducer(RedisQueueWorkerProcess):
 
-    def __init__(self,
-                 evidence_data_q,
-                 r_path,
-                 score_q,
-                 lookup_data,
-                 chunk_size = 1e4,
-                 dry_run = False,
-                 es = None
-                 ):
-        super(ScoreProducer, self).__init__(queue_in=evidence_data_q,
-                                            redis_path=r_path,
-                                            queue_out=score_q)
+    def __init__(self, evidence_data_q, r_path, score_q, lookup_data, chunk_size = 1e4, dry_run = False):
+        super(ScoreProducer, self).__init__(queue_in=evidence_data_q, redis_path=r_path, queue_out=score_q)
         self.evidence_data_q = evidence_data_q
         self.score_q = score_q
         self.lookup_data = lookup_data
@@ -623,7 +610,6 @@ class ScoreStorerWorker(RedisQueueWorkerProcess):
         self.q = score_q
         self.chunk_size = chunk_size
         self.dry_run = dry_run
-        self.es = None
         self.loader = None
 
 
@@ -711,12 +697,12 @@ class ScoringProcess():
                               serialiser=None,
                               )
 
-        target_map_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|target_map_q',
-                              max_size=len(targets),
-                              job_timeout=60*60*24,
-                              r_server=self.r_server,
-                              serialiser='jsonpickle',
-                              total=len(targets))
+        # target_map_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|target_map_q',
+        #                       max_size=len(targets),
+        #                       job_timeout=60*60*24,
+        #                       r_server=self.r_server,
+        #                       serialiser='jsonpickle',
+        #                       total=len(targets))
 
         target_disease_pair_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|target_disease_pair_q',
                                            max_size=queue_per_worker * number_of_storers,
@@ -764,7 +750,7 @@ class ScoringProcess():
             w.start()
 
 
-        '''start target-disease evidence producer'''
+        # start target-disease evidence producer
         readers = [TargetDiseaseEvidenceProducer(target_q,
                                                  None,
                                                  target_disease_pair_q,
@@ -773,21 +759,21 @@ class ScoringProcess():
         for w in readers:
             w.start()
 
-        '''start  maps storers'''
-        tm_storer = TargetMapStorer(target_map_q,
-                                    None,
-                                    disease_q,
-                                    lookup_data=lookup_data,
-                                    dry_run=dry_run
-                                    )
-        tm_storer.start()
-        dm_storer = DiseaseMapStorer(disease_q,
-                                    None,
-                                    None,
-                                    lookup_data=lookup_data,
-                                    dry_run=dry_run
-                                    )
-        dm_storer.start()
+        # start  maps storers
+        # tm_storer = TargetMapStorer(target_map_q,
+        #                             None,
+        #                             disease_q,
+        #                             lookup_data=lookup_data,
+        #                             dry_run=dry_run
+        #                             )
+        # tm_storer.start()
+        # dm_storer = DiseaseMapStorer(disease_q,
+        #                             None,
+        #                             None,
+        #                             lookup_data=lookup_data,
+        #                             dry_run=dry_run
+        #                             )
+        # dm_storer.start()
 
 
         self.es_loader.create_new_index(Config.ELASTICSEARCH_DATA_ASSOCIATION_INDEX_NAME, recreate=overwrite_indices)
@@ -808,11 +794,9 @@ class ScoringProcess():
             w.join()
         for w in scorers:
             w.join()
-        tm_storer.join()
-        dm_storer.join()
+        # tm_storer.join()
+        # dm_storer.join()
 
-#         for w in storers:
-#             w.join()
 
         logger.info('flushing data to index')
         self.es_loader.es.indices.flush('%s*'%Loader.get_versioned_index(Config.ELASTICSEARCH_DATA_ASSOCIATION_INDEX_NAME),
