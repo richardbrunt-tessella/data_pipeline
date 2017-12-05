@@ -697,12 +697,12 @@ class ScoringProcess():
                               serialiser=None,
                               )
 
-        # target_map_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|target_map_q',
-        #                       max_size=len(targets),
-        #                       job_timeout=60*60*24,
-        #                       r_server=self.r_server,
-        #                       serialiser='jsonpickle',
-        #                       total=len(targets))
+        target_map_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|target_map_q',
+                              max_size=len(targets),
+                              job_timeout=60*60*24,
+                              r_server=self.r_server,
+                              serialiser='jsonpickle',
+                              total=len(targets))
 
         target_disease_pair_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|target_disease_pair_q',
                                            max_size=queue_per_worker * number_of_storers,
@@ -710,12 +710,6 @@ class ScoringProcess():
                                            batch_size=10,
                                            r_server=self.r_server,
                                            serialiser='jsonpickle')
-        # score_data_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|score_data_q',
-        #                           max_size=queue_per_worker * number_of_storers,
-        #                           job_timeout=1200,
-        #                           batch_size=10,
-        #                           r_server=self.r_server,
-        #                           serialiser='jsonpickle')
 
         q_reporter = RedisQueueStatusReporter([target_q,
                                                target_disease_pair_q,
@@ -760,20 +754,20 @@ class ScoringProcess():
             w.start()
 
         # start  maps storers
-        # tm_storer = TargetMapStorer(target_map_q,
-        #                             None,
-        #                             disease_q,
-        #                             lookup_data=lookup_data,
-        #                             dry_run=dry_run
-        #                             )
-        # tm_storer.start()
-        # dm_storer = DiseaseMapStorer(disease_q,
-        #                             None,
-        #                             None,
-        #                             lookup_data=lookup_data,
-        #                             dry_run=dry_run
-        #                             )
-        # dm_storer.start()
+        tm_storer = TargetMapStorer(target_map_q,
+                                    None,
+                                    disease_q,
+                                    lookup_data=lookup_data,
+                                    dry_run=dry_run
+                                    )
+        tm_storer.start()
+        dm_storer = DiseaseMapStorer(disease_q,
+                                    None,
+                                    None,
+                                    lookup_data=lookup_data,
+                                    dry_run=dry_run
+                                    )
+        dm_storer.start()
 
 
         self.es_loader.create_new_index(Config.ELASTICSEARCH_DATA_ASSOCIATION_INDEX_NAME, recreate=overwrite_indices)
@@ -794,8 +788,8 @@ class ScoringProcess():
             w.join()
         for w in scorers:
             w.join()
-        # tm_storer.join()
-        # dm_storer.join()
+        tm_storer.join()
+        dm_storer.join()
 
 
         logger.info('flushing data to index')
