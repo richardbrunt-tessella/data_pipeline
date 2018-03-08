@@ -98,8 +98,8 @@ def _generate_ngram_filter():
     '''
     ngram = Dict()
     ngram.type = 'edgeNGram'
-    ngram.min_gram = '2'
-    ngram.max_gram = '10'
+    ngram.min_gram = '4'
+    ngram.max_gram = '15'
     ngram.token_chars = ['letter', 'digit', 'punctuation']
 
     return ngram.to_dict()
