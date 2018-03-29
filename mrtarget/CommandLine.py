@@ -63,6 +63,7 @@ def main():
                         action="append_const", const = GeneActions.ALL)
     parser.add_argument("--efo", dest='efo', help="process the efo information, store the resulting json objects in elasticsearch",
                         action="append_const", const = EfoActions.ALL)
+
     parser.add_argument("--hpo", dest='hpo',
                          help="process the Human Phenotype Ontology (HPO), store the resulting json objects in elasticsearch",
                          action="append_const", const=HpoActions.ALL)
@@ -92,20 +93,6 @@ def main():
     parser.add_argument("--persist-redis", dest='redispersist',
                         help="the temporary file wont be deleted if True default: False",
                         action='store_true', default=False)
-    parser.add_argument("--musu", dest='mus', help="update mouse model data",
-                        action="append_const", const = MouseModelsActions.UPDATE_CACHE)
-    parser.add_argument("--musg", dest='mus', help="update mus musculus and home sapiens gene list",
-                        action="append_const", const = MouseModelsActions.UPDATE_GENES)
-    parser.add_argument("--muse", dest='mus', help="generate mouse model evidence",
-                        action="append_const", const = MouseModelsActions.GENERATE_EVIDENCE)
-    parser.add_argument("--mus", dest='mus', help="update mouse models data",
-                        action="append_const", const = MouseModelsActions.ALL)
-    parser.add_argument("--intogen", dest='intogen', help="parse intogen driver gene evidence",
-                        action="append_const", const=IntOGenActions.GENERATE_EVIDENCE)
-    parser.add_argument("--g2p", dest='g2p', help="parse gene2phenotype evidence",
-                        action="append_const", const=G2PActions.GENERATE_EVIDENCE)
-    parser.add_argument("--slapenrich", dest='slapenrich', help="parse SLAPEnrich pathway evidence",
-                        action="append_const", const=SLAPEnrichActions.GENERATE_EVIDENCE)
     parser.add_argument("--hallmark", dest='hallmark', help="generate Hallmark Json",
                         action="append_const", const=HallmarksActions.GENERATE_JSON)
     parser.add_argument("--ontos", dest='onto', help="create phenotype slim",
@@ -274,30 +261,11 @@ def main():
             do_all = (EcoActions.ALL in args.eco) or run_full_pipeline
             if (EcoActions.PROCESS in args.eco) or do_all:
                 EcoProcess(loader).process_all()
-        if args.mus or run_full_pipeline:
-            do_all = (MouseModelsActions.ALL in args.mus) or run_full_pipeline
-            if (MouseModelsActions.UPDATE_CACHE in args.mus) or do_all:
-                Phenodigm(connectors.es, connectors.r_server).update_cache()
-            if (MouseModelsActions.UPDATE_GENES in args.mus) or do_all:
-                Phenodigm(connectors.es, connectors.r_server).update_genes()
-            if (MouseModelsActions.GENERATE_EVIDENCE in args.mus) or do_all:
-                Phenodigm(connectors.es, connectors.r_server).generate_evidence()
-        if args.g2p or run_full_pipeline:
-            do_all = (G2PActions.ALL in args.g2p) or run_full_pipeline
-            if (G2PActions.GENERATE_EVIDENCE in args.g2p) or do_all:
-                G2P(connectors.es).process_g2p()
-        if args.intogen or run_full_pipeline:
-            do_all = (IntOGenActions.ALL in args.intogen) or run_full_pipeline
-            if (IntOGenActions.GENERATE_EVIDENCE in args.intogen) or do_all:
-                IntOGen(connectors.es, connectors.r_server).process_intogen()
-        if args.slapenrich or run_full_pipeline:
-            do_all = (SLAPEnrichActions.ALL in args.slapenrich) or run_full_pipeline
-            if (SLAPEnrichActions.GENERATE_EVIDENCE in args.slapenrich) or do_all:
-                SLAPEnrich(connectors.es, connectors.r_server).process_slapenrich()
         if args.hallmark or run_full_pipeline:
             do_all = (HallmarksActions.ALL in args.hallmark) or run_full_pipeline
             if (HallmarksActions.GENERATE_JSON in args.hallmark) or do_all:
                 Hallmarks(loader, connectors.es, connectors.r_server).process_hallmarks()
+
         if args.onto or run_full_pipeline:
             do_all = (OntologyActions.ALL in args.onto) or run_full_pipeline
             if (OntologyActions.PHENOTYPESLIM in args.onto) or do_all:
