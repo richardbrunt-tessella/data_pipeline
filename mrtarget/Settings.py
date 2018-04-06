@@ -194,6 +194,8 @@ class Config():
     ELASTICSEARCH_UNIPROT_DOC_NAME = 'uniprot-gene'
     ELASTICSEARCH_HALLMARK_INDEX_NAME = 'hallmark-data'
     ELASTICSEARCH_HALLMARK_DOC_NAME = 'hallmark-gene'
+    ELASTICSEARCH_BIOMARKER_INDEX_NAME = 'biomarker-data'
+    ELASTICSEARCH_BIOMARKER_DOC_NAME = 'biomarker-gene'
     ELASTICSEARCH_RELATION_INDEX_NAME = 'relation-data'
     ELASTICSEARCH_RELATION_DOC_NAME = 'relation'
     ELASTICSEARCH_PUBLICATION_INDEX_NAME = '!publication-data'
@@ -206,9 +208,11 @@ class Config():
     ERROR_IDS_FILE = 'errors.txt'
 
     GENE_DATA_PLUGIN_PLACES = [ 'mrtarget' + os.path.sep + 'plugins' + os.path.sep + 'gene' ]
-    GENE_DATA_PLUGIN_ORDER = ['HGNC', 'Orthologs', 'Ensembl', 'Uniprot', 'ChEMBL', 'MousePhenotypes', 'Hallmarks' ]
+#    GENE_DATA_PLUGIN_ORDER = ['HGNC', 'Orthologs', 'Ensembl', 'Uniprot', 'ChEMBL', 'MousePhenotypes', 'Hallmarks' ]
+    GENE_DATA_PLUGIN_ORDER = ['Ensembl' , 'Hallmarks', 'CancerBiomarkers']
 
     HALLMARK_FILENAME = file_or_resource(fname='census_annot.tsv')
+    BIOMARKER_FILENAME = file_or_resource(fname='cgi_biomarkers_per_variant.tsv')
     HGNC_COMPLETE_SET = 'http://ftp.ebi.ac.uk/pub/databases/genenames/new/json/hgnc_complete_set.json'
     HGNC_ORTHOLOGS = 'http://ftp.ebi.ac.uk/pub/databases/genenames/hcop/human_all_hcop_sixteen_column.txt.gz'
     HGNC_ORTHOLOGS_SPECIES = {
