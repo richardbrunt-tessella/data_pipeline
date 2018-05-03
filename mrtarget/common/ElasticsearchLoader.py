@@ -111,7 +111,7 @@ class Loader():
         if isinstance(body, JSONSerializable):
             body.doc_id = ID
             body = body.to_json()
-        else:
+        elif isinstance(body, dict):
             body['doc_id'] = ID
             body = json.dumps(body)
 
