@@ -161,6 +161,7 @@ class Config():
 
     # folder to output each index creation
     OUTPUT_DIR = None
+    OUTPUT_PREFIX = ''
     ELASTICSEARCH_NODES = read_option('ELASTICSEARCH_NODES', cast=list,
                                       default=[])
     ELASTICSEARCH_NODES_PUB = read_option('ELASTICSEARCH_NODES_PUB', cast=list,

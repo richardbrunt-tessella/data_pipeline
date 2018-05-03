@@ -118,6 +118,10 @@ def main():
                         help="output dir to save the index data instead elasticsearch",
                         action='store', default='')
 
+    parser.add_argument("--output-prefix", dest='output_prefix',
+                        help="output prefix to prepend to the file names",
+                        action='store', default='')
+
     parser.add_argument("--redis-remote", dest='redis_remote', help="connect to a remote redis",
                         action='store_true', default=False)
     parser.add_argument("--redis-host", dest='redis_host',
@@ -172,6 +176,9 @@ def main():
     if args.output_dir:
         Config.OUTPUT_DIR = args.output_dir
         args.dry_run = True
+
+    if args.output_prefix:
+        Config.OUTPUT_PREFIX = args.output_prefix
 
     if args.lt_namespace:
         Config.LT_NAMESPACE = args.lt_namespace

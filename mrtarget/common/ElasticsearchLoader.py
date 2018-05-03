@@ -49,6 +49,7 @@ class Loader():
         self._last_flush_time = time.time()
         self._tmp_fd = None
         self._tmp_fd_path = Config.OUTPUT_DIR
+        self._tmp_fd_prefix = Config.OUTPUT_PREFIX
     @staticmethod
     def get_versioned_index(index_name, check_custom_idxs=False):
         '''get a composed real name of the index
@@ -168,7 +169,7 @@ class Loader():
             if self._tmp_fd is None and self._tmp_fd_path is not None:
                 import uuid
 
-                self._tmp_fd = open(self._tmp_fd_path + '/' + str(uuid.uuid4()) + '.json', 'w+')
+                self._tmp_fd = open(self._tmp_fd_path + '/' + self._tmp_fd_prefix + '_' + str(uuid.uuid4()) + '.json', 'w+')
                 self.logger.info('create temporary file to output '
                                  'generated index docs while dry_run '
                                  'is activated with file %s',
@@ -238,8 +239,7 @@ class Loader():
 
 
     def _file_create_index(self, index_name, body={}):
-        import os
-        filename = self._tmp_fd_path + '/' + index_name + '.json'
+        filename = self._tmp_fd_path + '/' + self._tmp_fd_prefix + '_' + index_name + '.json'
         self.logger.info("creating index %s", filename)
         with open(filename, 'w+') as f:
             f.writelines([json.dumps(body) + '\n'])
