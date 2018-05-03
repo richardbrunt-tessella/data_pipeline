@@ -139,6 +139,10 @@ class UniprotDownloader():
             data = self._get_data_from_remote(self.chunk_size, offset)
         self.logger.info('downloaded %i entries from uniprot'%c)
 
+        self.loader.flush()
+        self.loader.close()
+        self.logger.info("loader flushed and closed")
+
     def _iterate_xml(self, handle):
         for event, elem in ElementTree.iterparse(handle, events=("start", "end")):
             if event == "end" and elem.tag == self.NS + "entry":
