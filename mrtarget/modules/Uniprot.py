@@ -163,17 +163,6 @@ class UniprotDownloader():
         except (ConnectionError, Timeout, HTTPError) as e:
             raise IOError(e)
 
-
-    # def _save_to_postgresql(self, uniprotid, uniprot_xml):
-    #     entry = self.session.query(UniprotInfo).filter_by(uniprot_accession=uniprotid).count()
-    #     if not entry:
-    #         self.session.add(UniprotInfo(uniprot_accession=uniprotid,
-    #                                 uniprot_entry=uniprot_xml))
-    #         self.session.commit()
-    #         self.cached_count+=1
-    #         if (self.cached_count%5000)==0:
-    #             self.logger.info("Cached %i entries from uniprot to local postgres"%self.cached_count)
-
     def _save_to_elasticsearch(self, uniprotid, seqrec):
         # seqrec = UniprotIterator(StringIO(uniprot_xml), 'uniprot-xml').next()
         json_seqrec = base64.b64encode(jsonpickle.encode(seqrec))
@@ -181,22 +170,7 @@ class UniprotDownloader():
         self.loader.put(Config.ELASTICSEARCH_UNIPROT_INDEX_NAME,
                         Config.ELASTICSEARCH_UNIPROT_DOC_NAME,
                         uniprotid,
-                        dict(entry =json_seqrec))
-        # entry = self.session.query(UniprotInfo).filter_by(uniprot_accession=uniprotid).count()
-        # if not entry:
-        #     self.session.add(UniprotInfo(uniprot_accession=uniprotid,
-        #                                  uniprot_entry=uniprot_xml))
-        #     self.session.commit()
-        #     self.cached_count += 1
-        #     if (self.cached_count % 5000) == 0:
-        #         self.logger.info("Cached %i entries from uniprot to local postgres" % self.cached_count)
-
-    # def _delete_cache(self):
-    #     self.cached_count = 0
-    #     rows_deleted= self.session.query(UniprotInfo).delete()
-    #     if rows_deleted:
-    #         self.logger.info('deleted %i rows from uniprot_info'%rows_deleted)
-
+                        {"entry": json_seqrec})
 
 
 class UniprotData():

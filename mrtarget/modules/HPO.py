@@ -140,3 +140,5 @@ class HpoProcess():
                             doc_type=Config.ELASTICSEARCH_HPO_LABEL_DOC_NAME,
                             ID=hpo_id,
                             body = hpo_obj)
+        self.loader.flush()
+        self.loader.close()

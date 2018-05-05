@@ -169,7 +169,7 @@ class Loader():
             if self._tmp_fd is None and self._tmp_fd_path is not None:
                 import uuid
 
-                self._tmp_fd = open(self._tmp_fd_path + '/' + self._tmp_fd_prefix + '_' + str(uuid.uuid4()) + '.json', 'w+')
+                self._tmp_fd = open(self._tmp_fd_path + '/' + self._tmp_fd_prefix + '_idx_data_' + str(uuid.uuid4()) + '.json', 'w+')
                 self.logger.info('create temporary file to output '
                                  'generated index docs while dry_run '
                                  'is activated with file %s',
@@ -186,12 +186,14 @@ class Loader():
         self.restore_after_bulk_indexing()
         if self._tmp_fd is not None:
             self._tmp_fd.close()
+            self._tmp_fd = None
 
     def __enter__(self):
         return self
 
 
     def __exit__(self, type, value, traceback):
+        self.flush()
         self.close()
 
     def prepare_for_bulk_indexing(self, index_name):
@@ -239,7 +241,7 @@ class Loader():
 
 
     def _file_create_index(self, index_name, body={}):
-        filename = self._tmp_fd_path + '/' + self._tmp_fd_prefix + '_' + index_name + '.json'
+        filename = self._tmp_fd_path + '/' + self._tmp_fd_prefix + '_idx_conf_' + index_name + '.json'
         self.logger.info("creating index %s", filename)
         with open(filename, 'w+') as f:
             f.writelines([json.dumps(body) + '\n'])

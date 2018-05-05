@@ -298,6 +298,7 @@ class ValidatorProcess(RedisQueueWorkerProcess):
     def close(self):
         super(ValidatorProcess, self).close()
         self.log_acc.flush(True)
+        self.loader.flush()
         self.loader.close()
 
     def process(self, data):
@@ -356,8 +357,10 @@ class ValidatorProcess(RedisQueueWorkerProcess):
             else:
                 explanation['key_fields_missing'] = True
                 other_failures = True
-                self.log_acc.log(l.ERROR, "Line %i: Not a valid %s evidence string"
+                self.log_acc.log(l.DEBUG, "File: %s Datasource: %s Line %i: Not a valid %s evidence string"
                                   " - missing label and type mandatory attributes",
+                                 file_path,
+                                 data_source_name,
                                  line_counter,
                                  Config.EVIDENCEVALIDATION_SCHEMA)
 
@@ -366,13 +369,19 @@ class ValidatorProcess(RedisQueueWorkerProcess):
             if data_type is None:
                 explanation['missing_datatype'] = True
                 other_failures = True
-                self.log_acc.log(l.ERROR, "Line %i: Not a valid %s evidence string - "
+                self.log_acc.log(l.DEBUG, "File: %s Datasource: %s Line %i: Not a valid %s evidence string - "
                                   "please add the mandatory 'type' attribute",
+                                 file_path,
+                                 data_source_name,
                                  line_counter, Config.EVIDENCEVALIDATION_SCHEMA)
 
             elif data_type not in Config.EVIDENCEVALIDATION_DATATYPES:
                 other_failures = True
-                self.log_acc.log(l.ERROR, 'unsupported_datatype with data type %s and line %s', data_type, parsed_line)
+                self.log_acc.log(l.DEBUG, 'File: %s Datasource: %s Line %i: unsupported_datatype with data type %s and line %s',
+                                 file_path,
+                                 data_source_name,
+                                 line_counter,
+                                 data_type, parsed_line)
                 explanation['unsupported_datatype'] = data_type
 
             else:
@@ -482,33 +491,41 @@ class ValidatorProcess(RedisQueueWorkerProcess):
             # flag as valid or not
             if not (disease_failed or gene_failed or other_failures):
                 is_valid = True
+
+                loader_args = (Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME + '-' + data_source_name,
+                               data_source_name,
+                               json_doc_hashdig,
+                               dict(
+                                   uniq_assoc_fields_hashdig=uniq_elements_flat_hexdig,
+                                   json_doc_hashdig=json_doc_hashdig,
+                                   evidence_string=line,
+                                   target_id=target_id,
+                                   disease_id=efo_id,
+                                   data_source_name=data_source_name,
+                                   json_schema_version=Config.EVIDENCEVALIDATION_SCHEMA,
+                                   json_doc_version=1,
+                                   release_date=VALIDATION_DATE,
+                                   is_valid=is_valid,
+                                   explanation=explanation,
+                                   line=line_counter,
+                                   file_name=file_path))
+                loader_kwargs = dict(create_index=False)
+                return loader_args, loader_kwargs
+
             else:
                 explanation['disease_error'] = disease_failed
                 explanation['gene_error'] = gene_failed
                 explanation['gene_mapping_failed'] = gene_mapping_failed
-                self.log_acc.log(l.ERROR, 'evidence validation step failed at the end with an '
-                            'explanation %s', str(explanation))
+                self.log_acc.log(l.ERROR, 'File: %s Datasource: %s Line %i: evidence failed with this '
+                                          'explanation %s',
+                                 file_path,
+                                 data_source_name,
+                                 line_counter,
+                                str(explanation))
+                return None
 
 
-            loader_args = (Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME + '-' + data_source_name,
-                           data_source_name,
-                           json_doc_hashdig,
-                           dict(
-                               uniq_assoc_fields_hashdig=uniq_elements_flat_hexdig,
-                               json_doc_hashdig=json_doc_hashdig,
-                               evidence_string=line,
-                               target_id=target_id,
-                               disease_id=efo_id,
-                               data_source_name=data_source_name,
-                               json_schema_version=Config.EVIDENCEVALIDATION_SCHEMA,
-                               json_doc_version=1,
-                               release_date=VALIDATION_DATE,
-                               is_valid=is_valid,
-                               explanation=explanation,
-                               line = line_counter,
-                               file_name = file_path))
-            loader_kwargs = dict(create_index=False)
-            return loader_args, loader_kwargs
+
 
 
 class EvidenceValidationFileChecker():

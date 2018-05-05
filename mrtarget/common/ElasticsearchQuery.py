@@ -353,7 +353,7 @@ class ESQuery(object):
                            )
         for hit in res:
             yield jsonpickle.decode(base64.b64decode(hit['_source']['entry']))
-
+            # yield jsonpickle.decode(hit['_source']['entry'])
 
     def get_reaction(self, reaction_id):
         res = self.handler.search(index=Loader.get_versioned_index(Config.ELASTICSEARCH_REACTOME_INDEX_NAME,True),

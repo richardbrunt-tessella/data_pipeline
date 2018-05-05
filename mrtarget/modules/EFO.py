@@ -156,6 +156,8 @@ class EfoProcess():
                             doc_type=Config.ELASTICSEARCH_EFO_LABEL_DOC_NAME,
                             ID=efo_id,
                             body = efo_obj)
+        self.loader.flush()
+        self.loader.close()
 
 class DiseaseGraph:
     """

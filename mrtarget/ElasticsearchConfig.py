@@ -780,7 +780,7 @@ class ElasticSearchConfiguration():
             "refresh_interval": "10s",
         },
         "mappings": {
-            "__default__": {
+            Config.ELASTICSEARCH_REACTOME_REACTION_DOC_NAME: {
             }
         }
     }
@@ -791,7 +791,7 @@ class ElasticSearchConfiguration():
             "number_of_replicas": generic_replicas_number,
             "refresh_interval": "10s",
         },
-        "mappings": {
+        Config.ELASTICSEARCH_HPO_LABEL_DOC_NAME: {
             "__default__": {
             }
         }
@@ -804,7 +804,7 @@ class ElasticSearchConfiguration():
             "refresh_interval": "10s",
         },
         "mappings": {
-            "__default__": {
+            Config.ELASTICSEARCH_MP_LABEL_DOC_NAME: {
             }
         }
     }

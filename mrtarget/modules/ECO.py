@@ -111,5 +111,7 @@ class EcoProcess():
                             doc_type=Config.ELASTICSEARCH_ECO_DOC_NAME,
                             ID=eco_id,
                             body=eco_obj)
+        self.loader.flush()
+        self.loader.close()
 
 
