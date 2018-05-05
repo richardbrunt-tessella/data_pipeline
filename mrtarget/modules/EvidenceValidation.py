@@ -174,6 +174,7 @@ class FileProcesser():
         self.output_q.set_submission_finished(self.r_server)
 
         self.logger.info('finished preprocessing and submitting files')
+
         return processed_datasources
 
     def submit_file(self,
@@ -536,7 +537,7 @@ class EvidenceValidationFileChecker():
                  dry_run = False,
                  ):
         self.es = es
-        self.esquery = ESQuery(self.es, dry_run = dry_run)
+        # self.esquery = ESQuery(self.es, dry_run = dry_run)
         self.es_loader = Loader(self.es)
         self.dry_run = dry_run
         self.r_server = r_server
@@ -679,11 +680,9 @@ class EvidenceValidationFileChecker():
 
         if not dry_run:
             file_processer.loader.restore_after_bulk_indexing()
-            # for datasource in processed_datasources:
-            #     self.logger.debug('flushing index for dataource %s'%datasource)
-            #     self.es.indices.flush(self.es_loader.get_versioned_index(Config.ELASTICSEARCH_VALIDATED_DATA_INDEX_NAME+'-'+datasource),
-            #                           wait_if_ongoing=True)
 
+        file_processer.loader.flush()
+        file_processer.loader.close()
         self.logger.info('collecting reporter')
         q_reporter.join()
         return
