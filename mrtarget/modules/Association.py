@@ -512,9 +512,9 @@ class ScoringProcess():
     def __init__(self,
                  loader,
                  r_server):
-        self.es_loader = loader
-        self.es = loader.es
-        self.es_query = ESQuery(loader.es)
+        self.es_loader = Loader(es=loader.es, dry_run=loader.dry_run)
+        self.es = self.es_loader.es
+        self.es_query = ESQuery(self.es_loader.es)
         self.r_server = r_server
 
     def process_all(self,
