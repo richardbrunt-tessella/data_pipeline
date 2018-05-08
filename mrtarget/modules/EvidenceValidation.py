@@ -98,7 +98,7 @@ class FileProcesser():
                  increment=False):
         self.output_q = output_q
         self.es = es
-        self.loader = Loader(dry_run = dry_run)
+        self.loader = Loader(es=es, dry_run = dry_run)
         self.start_time = time.time()
         self.r_server = r_server
         self._remote_filenames =dict()

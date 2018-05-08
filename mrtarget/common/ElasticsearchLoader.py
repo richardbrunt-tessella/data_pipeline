@@ -4,6 +4,7 @@ import time
 import logging
 import tempfile
 import json
+import itertools as itt
 from elasticsearch.exceptions import NotFoundError
 from elasticsearch.helpers import bulk
 from mrtarget.common.DataStructure import JSONSerializable
@@ -47,7 +48,7 @@ class Loader():
         self.dry_run = dry_run
         self.max_flush_interval = max_flush_interval
         self._last_flush_time = time.time()
-        self._tmp_fd = None
+        self._tmp_fd = {}
         self._tmp_fd_path = Config.OUTPUT_DIR
         self._tmp_fd_prefix = Config.OUTPUT_PREFIX
     @staticmethod
@@ -165,28 +166,33 @@ class Loader():
                  self.cache,
                  stats_only=True)
         else:
-            # create a temporal file if necessary
-            if self._tmp_fd is None and self._tmp_fd_path is not None:
-                import uuid
+            # build dict
+            for k, v in itt.groupby(self.cache, key=lambda x: x['_index']):
 
-                self._tmp_fd = open(self._tmp_fd_path + '/' + self._tmp_fd_prefix + '_idx_data_' + str(uuid.uuid4()) + '.json', 'w+')
-                self.logger.info('create temporary file to output '
-                                 'generated index docs while dry_run '
-                                 'is activated with file %s',
-                                 self._tmp_fd.name)
+                # create a temporal file if necessary
+                if (k not in self._tmp_fd) and self._tmp_fd_path is not None:
+                    import uuid
+
+                    self._tmp_fd[k] = open(self._tmp_fd_path + '/' + self._tmp_fd_prefix + '_idx_data_' +
+                        k + '_' + str(uuid.uuid4()) + '.json', 'w+')
+                    self.logger.info('create temporary file to output '
+                                     'generated index docs while dry_run '
+                                     'is activated with file %s',
+                                     self._tmp_fd[k].name)
 
 
-            # flush self.cache into temp file converted as text lines
-            if self._tmp_fd_path is not None:
-                self._tmp_fd.writelines([el["_source"] + '\n'
-                                         for el in self.cache])
+                # flush self.cache into temp file converted as text lines
+                if self._tmp_fd_path is not None:
+                    self._tmp_fd[k].writelines([el["_source"] + '\n'
+                                             for el in v])
 
     def close(self):
         self.flush()
         self.restore_after_bulk_indexing()
-        if self._tmp_fd is not None:
-            self._tmp_fd.close()
-            self._tmp_fd = None
+        if self._tmp_fd:
+            for k in self._tmp_fd.keys():
+                self._tmp_fd[k].close()
+                self._tmp_fd.pop(k, None)
 
     def __enter__(self):
         return self

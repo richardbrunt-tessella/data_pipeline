@@ -156,7 +156,6 @@ class LookUpDataRetriever(object):
         self._logger.info('getting ecos')
         self.lookup.available_ecos = ECOLookUpTable(self.es, 'ECO_LOOKUP', self.r_server)
 
-
     def _get_gene_info(self, targets=[], autoload = True):
         self._logger.info('getting gene info')
         self.lookup.available_genes = GeneLookUpTable(self.es,

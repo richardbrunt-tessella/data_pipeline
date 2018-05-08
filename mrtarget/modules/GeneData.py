@@ -399,7 +399,7 @@ class GeneObjectStorer(RedisQueueWorkerProcess):
         self.loader.put(Config.ELASTICSEARCH_GENE_NAME_INDEX_NAME,
                        Config.ELASTICSEARCH_GENE_NAME_DOC_NAME,
                        geneid,
-                       gene.to_json(),
+                       gene,
                        create_index=False)
 
     def init(self):
@@ -421,7 +421,7 @@ class GeneManager():
                  loader,
                  r_server):
 
-        self.loader = loader
+        self.loader = Loader(loader.es, dry_run=loader.is_dry_run())
         self.r_server = r_server
         self.genes = GeneSet()
         self._logger = logging.getLogger(__name__)

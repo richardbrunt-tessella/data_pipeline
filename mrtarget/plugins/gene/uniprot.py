@@ -4,7 +4,10 @@ from mrtarget.Settings import Config
 from mrtarget.common.ElasticsearchQuery import ESQuery
 from elasticsearch.exceptions import NotFoundError
 from mrtarget.modules.Reactome import ReactomeRetriever
+from mrtarget.common.LookupTables import _iterate_lut_file
 from tqdm import tqdm
+import jsonpickle
+import base64
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -17,25 +20,9 @@ class Uniprot(IPlugin):
         self._logger.info("Uniprot (and Reactome) gene data plugin")
 
     def merge_data(self, genes, loader, r_server, tqdm_out):
+        for c, row in enumerate(_iterate_lut_file(Config.ELASTICSEARCH_UNIPROT_DOC_NAME), start=1):
+            seqrec = yield jsonpickle.decode(base64.b64decode(row['entry']))
 
-        esquery = ESQuery(loader.es)
-        reactome_retriever = ReactomeRetriever(loader.es)
-
-        try:
-            esquery.count_elements_in_index(Config.ELASTICSEARCH_UNIPROT_INDEX_NAME)
-        except NotFoundError as ex:
-            self._logger.error('no Uniprot index found in ES. Skipping. Has the --uniprot step been run? Are you pointing to the correct index? %s' % ex)
-            raise ex
-
-        c = 0
-        for seqrec in tqdm(esquery.get_all_uniprot_entries(),
-                           desc='loading genes from UniProt',
-                           unit_scale=True,
-                           unit='genes',
-                           leave=False,
-                           file=tqdm_out,
-                           total=esquery.count_elements_in_index(Config.ELASTICSEARCH_UNIPROT_INDEX_NAME)):
-            c += 1
             if c % 1000 == 0:
                 self._logger.info("%i entries retrieved for uniprot" % c)
             if 'Ensembl' in seqrec.annotations['dbxref_extended']:
