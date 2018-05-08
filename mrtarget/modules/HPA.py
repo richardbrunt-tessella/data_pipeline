@@ -14,7 +14,7 @@ import petl
 from mrtarget.common import URLZSource
 
 from mrtarget.common import Actions
-from mrtarget.common.ElasticsearchQuery import ESQuery, Loader
+from mrtarget.common.ElasticsearchQuery import Loader
 from mrtarget.common.Redis import RedisQueueStatusReporter, RedisQueueWorkerProcess, RedisQueue
 
 from mrtarget.Settings import Config
@@ -540,8 +540,7 @@ class ExpressionObjectStorer(RedisQueueWorkerProcess):
 
 class HPAProcess():
     def __init__(self, loader, r_server):
-        self.loader = loader
-        self.esquery = ESQuery(loader.es)
+        self.loader = Loader(es=loader.es, dry_run=loader.dry_run)
         self.r_server = r_server
         self.downloader = HPADataDownloader()
         self.logger = logging.getLogger(__name__)
