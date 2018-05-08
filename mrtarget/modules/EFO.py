@@ -6,6 +6,7 @@ from mrtarget.common import Actions
 from mrtarget.common.connection import PipelineConnectors
 from mrtarget.common.DataStructure import JSONSerializable
 from mrtarget.modules.Ontology import OntologyClassReader, DiseaseUtils
+from mrtarget.common.ElasticsearchLoader import Loader
 from rdflib import URIRef
 from mrtarget.Settings import Config
 
@@ -93,7 +94,7 @@ class EfoProcess():
 
     def __init__(self,
                  loader,):
-        self.loader = loader
+        self.loader = Loader(loader.es, dry_run=loader.is_dry_run())
         self.efos = OrderedDict()
 
     def process_all(self):

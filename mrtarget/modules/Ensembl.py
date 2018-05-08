@@ -5,6 +5,7 @@ import mysql.connector
 import requests
 import time
 
+from mrtarget.common.ElasticsearchLoader import Loader
 from mrtarget.common import Actions
 from mrtarget.Settings import Config, build_ensembl_sql
 
@@ -179,7 +180,7 @@ class EnsemblGeneInfo(object):
 class EnsemblProcess(object):
 
     def __init__(self, loader):
-        self.loader = loader
+        self.loader = Loader(loader.es, dry_run=loader.is_dry_run())
 
     def process(self, ensembl_release=Config.ENSEMBL_RELEASE_VERSION):
         __log__.info('Start processing ENSGIDs from Ensembl')
@@ -190,3 +191,5 @@ class EnsemblProcess(object):
                             ens_id,
                             json.dumps(data),
                             True)
+        self.loader.flush()
+        self.loader.close()

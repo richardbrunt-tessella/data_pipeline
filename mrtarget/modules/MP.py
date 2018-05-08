@@ -4,6 +4,7 @@ from collections import OrderedDict
 from tqdm import tqdm 
 from mrtarget.common import TqdmToLogger
 from mrtarget.common import Actions
+from mrtarget.common.ElasticsearchLoader import Loader
 from mrtarget.common.DataStructure import JSONSerializable
 from mrtarget.modules.Ontology import OntologyClassReader, DiseaseUtils
 from rdflib import URIRef
@@ -85,7 +86,7 @@ class MpProcess():
 
     def __init__(self,
                  loader,):
-        self.loader = loader
+        self.loader = Loader(loader.es, dry_run=loader.is_dry_run())
         self.mps = OrderedDict()
         self._logger = logging.getLogger(__name__)
 

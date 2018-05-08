@@ -663,7 +663,7 @@ class ElasticSearchConfiguration():
         "settings": {
             "number_of_shards": publication_shard_number,
             "number_of_replicas": publication_replicas_number,
-            "refresh_interval": "1s",
+            "refresh_interval": "60s",
         },
         "mappings": {
             Config.ELASTICSEARCH_PUBLICATION_DOC_NAME: {
@@ -738,7 +738,7 @@ class ElasticSearchConfiguration():
         "settings": {
             "number_of_shards": publication_shard_number,
             "number_of_replicas": publication_replicas_number,
-            "refresh_interval": "1s",
+            "refresh_interval": "60s",
         },
         "mappings": {
             Config.ELASTICSEARCH_LITERATURE_ENTITY_DOC_NAME: {
@@ -777,7 +777,7 @@ class ElasticSearchConfiguration():
         "settings": {
             "number_of_shards": generic_shard_number,
             "number_of_replicas": generic_replicas_number,
-            "refresh_interval": "10s",
+            "refresh_interval": "60s",
         },
         "mappings": {
             Config.ELASTICSEARCH_REACTOME_REACTION_DOC_NAME: {
@@ -789,7 +789,7 @@ class ElasticSearchConfiguration():
         "settings": {
             "number_of_shards": generic_shard_number,
             "number_of_replicas": generic_replicas_number,
-            "refresh_interval": "10s",
+            "refresh_interval": "60s",
         },
         Config.ELASTICSEARCH_HPO_LABEL_DOC_NAME: {
             "__default__": {
@@ -801,10 +801,22 @@ class ElasticSearchConfiguration():
         "settings": {
             "number_of_shards": generic_shard_number,
             "number_of_replicas": generic_replicas_number,
-            "refresh_interval": "10s",
+            "refresh_interval": "60s",
         },
         "mappings": {
             Config.ELASTICSEARCH_MP_LABEL_DOC_NAME: {
+            }
+        }
+    }
+
+    ensembl_data_mapping = {
+        "settings": {
+            "number_of_shards": generic_shard_number,
+            "number_of_replicas": generic_replicas_number,
+            "refresh_interval": "60s",
+        },
+        "mappings": {
+            Config.ELASTICSEARCH_ENSEMBL_DOC_NAME: {
             }
         }
     }
@@ -825,4 +837,5 @@ class ElasticSearchConfiguration():
                        Config.ELASTICSEARCH_REACTOME_INDEX_NAME: reactome_data_mapping,
                        Config.ELASTICSEARCH_HPO_LABEL_INDEX_NAME: hpo_data_mapping,
                        Config.ELASTICSEARCH_MP_LABEL_INDEX_NAME: mp_data_mapping,
+                       Config.ELASTICSEARCH_ENSEMBL_INDEX_NAME: ensembl_data_mapping,
                        }

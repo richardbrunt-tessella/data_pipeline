@@ -6,6 +6,24 @@ from mrtarget.common.Redis import RedisLookupTablePickle
 from mrtarget.common.connection import new_redis_client, PipelineConnectors
 from mrtarget.Settings import Config
 from mrtarget.common import TqdmToLogger
+import ujson as json
+import glob
+import os
+
+
+def _build_lut_name(index_doc_name):
+    '''return a list of data files with names'''
+    path_prefix = Config.OUTPUT_PREFIX
+    glob_pattern = path_prefix + os.path.sep + index_doc_name + '_idx_data_*.json'
+    return glob.glob(glob_pattern)
+
+
+def _iterate_lut_file(index_doc_name):
+    for filename in _build_lut_name(index_doc_name):
+        with open(filename,'r') as f:
+            for el in f:
+                yield json.loads(el)
+
 
 class HPALookUpTable(object):
     """
@@ -31,14 +49,12 @@ class HPALookUpTable(object):
             self._load_hpa_data(self.r_server)
 
     def _load_hpa_data(self, r_server=None):
-        for el in tqdm(self._es_query.get_all_hpa(),
-                       desc='loading hpa',
-                       unit=' hpa',
-                       unit_scale=True,
-                       total=self._es_query.count_all_hpa(),
-                       file=self.tqdm_out,
-                       leave=False):
+        self._logger.info("LUT expression loading data into redis...")
+
+        for el in _iterate_lut_file(Config.ELASTICSEARCH_EXPRESSION_DOC_NAME):
             self.set_hpa(el, r_server=self._get_r_server(r_server))
+
+        self._logger.info("LUT expression loading data into redis done")
 
     def get_hpa(self, idx, r_server=None):
         return self._table.get(idx, r_server=self._get_r_server(r_server))
@@ -92,48 +108,16 @@ class GeneLookUpTable(object):
             self.load_gene_data(self.r_server, targets)
 
     def load_gene_data(self, r_server = None, targets = []):
-        data = None
-        if targets:
-            data = self._es_query.get_targets_by_id(targets)
-            total = len(targets)
-        if data is None:
-            data = self._es_query.get_all_targets()
-            total = self._es_query.count_all_targets()
-        for target in tqdm(
-                data,
-                desc = 'loading genes',
-                unit = ' gene',
-                unit_scale = True,
-                total = total,
-                file=self.tqdm_out,
-                leave=False):
+        self._logger.info("LUT ensembl loading data into redis...")
+
+        for target in _iterate_lut_file(Config.ELASTICSEARCH_ENSEMBL_DOC_NAME):
             self._table.set(target['id'],target, r_server=self._get_r_server(r_server))#TODO can be improved by sending elements in batches
             if target['uniprot_id']:
                 self.uniprot2ensembl[target['uniprot_id']] = target['id']
             for accession in target['uniprot_accessions']:
                 self.uniprot2ensembl[accession] = target['id']
 
-    # def load_uniprot2ensembl(self, targets = []):
-    #     uniprot_fields = ['uniprot_id','uniprot_accessions', 'id']
-    #     if targets:
-    #         data = self._es_query.get_targets_by_id(targets,
-    #                                                 fields= uniprot_fields)
-    #         total = len(targets)
-    #     else:
-    #         data = self._es_query.get_all_targets(fields= uniprot_fields)
-    #         total = self._es_query.count_all_targets()
-    #     for target in tqdm(data,
-    #                        desc='loading mappings from uniprot to ensembl',
-    #                        unit=' gene mapping',
-    #                        unit_scale=True,
-    #                        file=self.tqdm_out,
-    #                        total=total,
-    #                        leave=False,
-    #                        ):
-    #         if target['uniprot_id']:
-    #             self.uniprot2ensembl[target['uniprot_id']] = target['id']
-    #         for accession in target['uniprot_accessions']:
-    #             self.uniprot2ensembl[accession] = target['id']
+        self._logger.info("LUT ensembl loading data into redis done")
 
     def get_gene(self, target_id, r_server = None):
         try:
@@ -212,19 +196,13 @@ class ECOLookUpTable(object):
         return url.split('/')[-1]
 
     def _load_eco_data(self, r_server=None):
-        self._logger = logging.getLogger(__name__)
-        self.tqdm_out = TqdmToLogger(self._logger, level=logging.INFO)
-        for eco in tqdm(self._es_query.get_all_eco(),
-                        desc='loading eco',
-                        unit=' eco',
-                        unit_scale=True,
-                        file=self.tqdm_out,
-                        total=self._es_query.count_all_eco(),
-                        leave=False,
-                        ):
+        self._logger.info("LUT eco loading data into redis...")
+
+        for eco in _iterate_lut_file(Config.ELASTICSEARCH_ECO_DOC_NAME):
             self._table.set(self.get_ontology_code_from_url(eco['code']), eco,
                             r_server=self._get_r_server(r_server))  # TODO can be improved by sending elements in batches
 
+        self._logger.info("LUT eco loading data into redis done")
 
     def get_eco(self, efo_id, r_server=None):
         return self._table.get(efo_id, r_server=self._get_r_server(r_server))
@@ -280,17 +258,12 @@ class EFOLookUpTable(object):
             self._load_efo_data(r_server)
 
     def _load_efo_data(self, r_server = None):
-        self._logger = logging.getLogger(__name__)
-        self.tqdm_out = TqdmToLogger(self._logger, level=logging.INFO)
-        for efo in tqdm(self._es_query.get_all_diseases(),
-                        desc='loading diseases',
-                        unit=' diseases',
-                        unit_scale=True,
-                        file=self.tqdm_out,
-                        total=self._es_query.count_all_diseases(),
-                        leave=False,
-                        ):
-            self.set_efo(efo, r_server=self._get_r_server(r_server))#TODO can be improved by sending elements in batches
+        self._logger.info("LUT efo loading data into redis...")
+
+        for efo in _iterate_lut_file(Config.ELASTICSEARCH_EFO_LABEL_DOC_NAME):
+            self.set_efo(efo, r_server=self._get_r_server(r_server))
+
+        self._logger.info("LUT efo loading data into redis done")
 
     def get_efo(self, efo_id, r_server=None):
         return self._table.get(efo_id, r_server=self._get_r_server(r_server))
@@ -340,17 +313,12 @@ class MPLookUpTable(object):
             self._load_mp_data(r_server)
 
     def _load_mp_data(self, r_server = None):
-        self._logger = logging.getLogger(__name__)
-        self.tqdm_out = TqdmToLogger(self._logger, level=logging.INFO)
-        for mp in tqdm(self._es_query.get_all_mammalian_phenotypes(),
-                        desc='loading mammalian phenotypes',
-                        unit=' mammalian phenotypes',
-                        unit_scale=True,
-                        file=self.tqdm_out,
-                        total=self._es_query.count_all_mammalian_phenotypes(),
-                        leave=False,
-                        ):
-            self.set_mp(mp, r_server=self._get_r_server(r_server))#TODO can be improved by sending elements in batches
+        self._logger.info("LUT mp loading data into redis...")
+
+        for mp in _iterate_lut_file(Config.ELASTICSEARCH_MP_LABEL_DOC_NAME):
+            self.set_mp(mp, r_server=self._get_r_server(r_server))
+
+        self._logger.info("LUT mp loading data into redis done")
 
     def get_mp(self, mp_id, r_server=None):
         return self._table.get(mp_id, r_server=self._get_r_server(r_server))
@@ -399,15 +367,12 @@ class HPOLookUpTable(object):
             self._load_hpo_data(r_server)
 
     def _load_hpo_data(self, r_server = None):
-        for hpo in tqdm(self._es_query.get_all_human_phenotypes(),
-                        desc='loading human phenotypes',
-                        unit=' human phenotypes',
-                        unit_scale=True,
-                        file=self.tqdm_out,
-                        total=self._es_query.count_all_human_phenotypes(),
-                        leave=False,
-                        ):
-            self.set_hpo(hpo, r_server=self._get_r_server(r_server))#TODO can be improved by sending elements in batches
+        self._logger.info("LUT hpo loading data into redis...")
+
+        for hpo in _iterate_lut_file(Config.ELASTICSEARCH_HPO_LABEL_DOC_NAME):
+            self.set_hpo(hpo, r_server=self._get_r_server(r_server))
+
+        self._logger.info("LUT hpo loading data into redis done")
 
     def get_hpo(self, hpo_id, r_server=None):
         return self._table.get(hpo_id, r_server=self._get_r_server(r_server))

@@ -5,6 +5,7 @@ import requests
 from networkx.algorithms import all_simple_paths
 
 from mrtarget.common import Actions
+from mrtarget.common.ElasticsearchLoader import Loader
 from mrtarget.common.DataStructure import TreeNode, JSONSerializable
 from mrtarget.common.ElasticsearchQuery import ESQuery
 from mrtarget.Settings import Config
@@ -111,7 +112,7 @@ class ReactomeDataDownloader():
 
 class ReactomeProcess():
     def __init__(self, loader):
-        self.loader = loader
+        self.loader = Loader(loader.es, dry_run=loader.is_dry_run())
         self.g = nx.DiGraph(name="reactome")
         self.data = {}
         '''download data'''

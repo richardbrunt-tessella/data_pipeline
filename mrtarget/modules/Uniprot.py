@@ -109,8 +109,7 @@ class UniprotDownloader():
         self.url = "http://www.uniprot.org/uniprot/?query="
         self.chunk_size = chunk_size
         self.timeout = timeout
-        self.loader = Loader(loader.es, chunk_size=10,
-                             dry_run=loader.is_dry_run())
+        self.loader = Loader(loader.es, dry_run=loader.is_dry_run())
         self.NS = "{http://uniprot.org/uniprot}"
         self.logger = logging.getLogger(__name__)
 

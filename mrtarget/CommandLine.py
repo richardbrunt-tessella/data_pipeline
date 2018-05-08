@@ -245,39 +245,48 @@ def main():
         if args.hpa or run_full_pipeline:
             do_all = (HPAActions.ALL in args.hpa) or run_full_pipeline
             if (HPAActions.PROCESS in args.hpa) or do_all:
+                Config.OUTPUT_PREFIX = Config.ELASTICSEARCH_EXPRESSION_DOC_NAME
                 HPAProcess(loader,connectors.r_server).process_all(dry_run=args.dry_run)
         if args.rea or run_full_pipeline:
             do_all = (ReactomeActions.ALL in args.rea) or run_full_pipeline
             if (ReactomeActions.PROCESS in args.rea) or do_all:
+                Config.OUTPUT_PREFIX = Config.ELASTICSEARCH_REACTOME_REACTION_DOC_NAME
                 ReactomeProcess(loader).process_all()
         if args.uni or run_full_pipeline:
             do_all = (UniProtActions.ALL in args.uni) or run_full_pipeline
             if (UniProtActions.CACHE in args.uni) or do_all:
+                Config.OUTPUT_PREFIX = Config.ELASTICSEARCH_UNIPROT_DOC_NAME
                 UniprotDownloader(loader).cache_human_entries()
         if args.ens or run_full_pipeline:
             do_all = (EnsemblActions.ALL in args.ens) or run_full_pipeline
             if (EnsemblActions.PROCESS in args.ens) or do_all:
+                Config.OUTPUT_PREFIX = Config.ELASTICSEARCH_ENSEMBL_DOC_NAME
                 EnsemblProcess(loader).process()
 
         if args.gen or run_full_pipeline:
             do_all = (GeneActions.ALL in args.gen) or run_full_pipeline
             if (GeneActions.MERGE in args.gen) or do_all:
+                Config.OUTPUT_PREFIX = Config.ELASTICSEARCH_GENE_NAME_DOC_NAME
                 GeneManager(loader,connectors.r_server).merge_all(dry_run=args.dry_run)
         if args.efo or run_full_pipeline:
             do_all = (EfoActions.ALL in args.efo) or run_full_pipeline
             if (EfoActions.PROCESS in args.efo) or do_all:
+                Config.OUTPUT_PREFIX = Config.ELASTICSEARCH_EFO_LABEL_DOC_NAME
                 EfoProcess(loader).process_all()
         if args.hpo or run_full_pipeline:
              do_all = (HpoActions.ALL in args.hpo) or run_full_pipeline
              if (HpoActions.PROCESS in args.hpo) or do_all:
+                 Config.OUTPUT_PREFIX = Config.ELASTICSEARCH_HPO_LABEL_DOC_NAME
                  HpoProcess(loader).process_all()
         if args.mp or run_full_pipeline:
              do_all = (MpActions.ALL in args.mp) or run_full_pipeline
              if (MpActions.PROCESS in args.mp) or do_all:
+                 Config.OUTPUT_PREFIX = Config.ELASTICSEARCH_MP_LABEL_DOC_NAME
                  MpProcess(loader).process_all()
         if args.eco or run_full_pipeline:
             do_all = (EcoActions.ALL in args.eco) or run_full_pipeline
             if (EcoActions.PROCESS in args.eco) or do_all:
+                Config.OUTPUT_PREFIX = Config.ELASTICSEARCH_ECO_DOC_NAME
                 EcoProcess(loader).process_all()
         if args.mus or run_full_pipeline:
             do_all = (MouseModelsActions.ALL in args.mus) or run_full_pipeline
