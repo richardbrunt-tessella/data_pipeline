@@ -14,7 +14,7 @@ import os
 def _build_lut_name(index_doc_name):
     '''return a list of data files with names'''
     return glob.glob(Config.OUTPUT_DIR + os.path.sep + \
-                   index_doc_name + '_idx_data_*')
+                   index_doc_name + '_idx_data_' + Config.RELEASE_VERSION + '_*')
 
 
 def _iterate_lut_file(index_doc_name):
