@@ -372,7 +372,7 @@ class Config():
     GLOBAL_STATS_SOURCES_TO_INCLUDE = ['expression_atlas', 'phenodigm', 'chembl', 'europepmc',
                                        'reactome', 'slapenrich', 'intogen', 'eva_somatic', 'cancer_gene_census',
                                        'uniprot_somatic', 'eva', 'gwas_catalog', 'uniprot', 'uniprot_literature',
-                                       'gene2phenotype', 'phewas_catalog', 'genomics_england']
+                                       'gene2phenotype', 'phewas_catalog', 'genomics_england', 'progeny']
 
     # datasources to be used to apply computed global stats
     GLOBAL_STATS_SOURCES_TO_APPLY = ['europepmc', 'expression_atlas']
