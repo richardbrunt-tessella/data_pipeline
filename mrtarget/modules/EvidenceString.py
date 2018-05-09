@@ -1235,7 +1235,7 @@ class EvidenceStringProcess():
                                           data_types=lookup_data_types,
                                           autoload=True).lookup
 
-        global_stat_cache= 'global_stats.pkl'
+        global_stat_cache= Config.OUTPUT_DIR + os.path.sep + 'global_stats.pkl'
         if os.path.exists(global_stat_cache):
             self.logger.info("pickling up the global stats")
             global_stats = pickle.load(open(global_stat_cache))
