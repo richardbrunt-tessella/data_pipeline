@@ -322,6 +322,7 @@ def main():
         if args.evs or run_full_pipeline:
             do_all = (EvidenceStringActions.ALL in args.evs) or run_full_pipeline
             if (EvidenceStringActions.PROCESS in args.evs) or do_all:
+                Config.OUTPUT_PREFIX = Config.ELASTICSEARCH_DATA_DOC_NAME
                 targets = EvidenceStringProcess(connectors.es,
                                                 connectors.r_server,
                                                 ).process_all(datasources = args.datasource,

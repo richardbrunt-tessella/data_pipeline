@@ -766,7 +766,7 @@ class Evidence(JSONSerializable):
         self.datatype = translate_database[self.database]
 
     def get_doc_name(self):
-        return Config.ELASTICSEARCH_DATA_DOC_NAME + '-' + self.database
+        return Config.ELASTICSEARCH_DATA_DOC_NAME
 
     def get_id(self):
         return self.evidence['id']
@@ -1092,10 +1092,10 @@ class EvidenceProcesser(RedisQueueWorkerProcess):
 
         self.evidence_manager.inject_loci(ev)
         loader_args = (
-            Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' + Config.DATASOURCE_TO_INDEX_KEY_MAPPING[ev.database],
+            Config.ELASTICSEARCH_DATA_INDEX_NAME,
             ev.get_doc_name(),
             idev,
-            ev.to_json(),
+            ev,
         )
         # remove routing doesnt make sense with one node
         # loader_kwargs = dict(create_index=False,
@@ -1250,14 +1250,9 @@ class EvidenceStringProcess():
         overwrite_indices = not dry_run
         if not dry_run:
             overwrite_indices = not bool(datasources)
-        for k, v in Config.DATASOURCE_TO_INDEX_KEY_MAPPING:
-            loader.create_new_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' + v, recreate=overwrite_indices)
-            loader.prepare_for_bulk_indexing(loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' + v))
-        loader.create_new_index(
-            Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' + Config.DATASOURCE_TO_INDEX_KEY_MAPPING['default'],
-            recreate=overwrite_indices)
-        loader.prepare_for_bulk_indexing(loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' +
-                                                                    Config.DATASOURCE_TO_INDEX_KEY_MAPPING['default']))
+
+        loader.create_new_index(Config.ELASTICSEARCH_DATA_INDEX_NAME, recreate=overwrite_indices)
+        loader.prepare_for_bulk_indexing(loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME))
 
         '''create queues'''
         self.logger.info('limiting the number or workers to a max of 16 or cpucount')
