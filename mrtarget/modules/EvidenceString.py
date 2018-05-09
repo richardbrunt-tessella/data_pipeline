@@ -1244,6 +1244,7 @@ class EvidenceStringProcess():
             global_stats = self.get_global_stats(lookup_data.uni2ens,
                                                  lookup_data.available_genes,
                                                  lookup_data.non_reference_genes)
+            self.logger.info("dump to file the global stats")
             pickle.dump(global_stats, open(global_stat_cache,'w+'), protocol=pickle.HIGHEST_PROTOCOL)
 
         '''prepare es indices'''
@@ -1337,7 +1338,7 @@ class EvidenceStringProcess():
 
     def get_global_stats(self, uni2ens, available_genes, non_reference_genes):
         global_stats = EvidenceGlobalCounter()
-        for row in self.get_evidence():
+        for i, row in enumerate(self.get_evidence(), start=1):
             ev = Evidence(row['evidence_string'], datasource=row['data_source_name']).evidence
 
             EvidenceManager.fix_target_id(ev, uni2ens, available_genes, non_reference_genes)
@@ -1347,6 +1348,9 @@ class EvidenceStringProcess():
             # Config class in Settings.py
             if ev["sourceID"] in Config.GLOBAL_STATS_SOURCES_TO_INCLUDE:
                 global_stats.digest(ev=ev)
+
+            if i % 100000 == 0:
+                self.logger.info("show 1 of 100000 evidence %s %s", str(row), str(ev))
 
         global_stats.compress()
         return global_stats
