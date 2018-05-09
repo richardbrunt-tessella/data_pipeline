@@ -87,9 +87,7 @@ class LookUpDataRetriever(object):
         self.es = es
         self.r_server = r_server
 
-        self.esquery = ESQuery(self.es)
-
-        require_all(self.es is not None, self.r_server is not None)
+        require_all(self.r_server is not None)
 
         self.lookup = LookUpData()
         self._logger = logging.getLogger(__name__)
@@ -137,7 +135,6 @@ class LookUpDataRetriever(object):
     def set_r_server(self, r_server):
         self.r_server = r_server
         self.lookup.set_r_server(r_server)
-        self.esquery = ESQuery()
 
     def _get_available_efos(self):
         self._logger.info('getting efos')
