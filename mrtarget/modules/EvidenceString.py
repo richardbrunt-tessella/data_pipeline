@@ -1223,8 +1223,8 @@ class EvidenceStringProcess():
                                                   dry_run=dry_run)
 
     def _process_evidence_string_data(self,
-                                      datasources=[],
-                                      dry_run=False):
+                                      datasources,
+                                      dry_run):
 
         self.logger.debug("Starting Evidence Manager")
         '''get lookup data and stats'''
@@ -1237,8 +1237,10 @@ class EvidenceStringProcess():
 
         global_stat_cache= 'global_stats.pkl'
         if os.path.exists(global_stat_cache):
+            self.logger.info("pickling up the global stats")
             global_stats = pickle.load(open(global_stat_cache))
         else:
+            self.logger.info("computing the global stats")
             global_stats = self.get_global_stats(lookup_data.uni2ens,
                                                  lookup_data.available_genes,
                                                  lookup_data.non_reference_genes)
@@ -1246,12 +1248,9 @@ class EvidenceStringProcess():
                 pickle.dump(global_stats, open(global_stat_cache,'w'), protocol=pickle.HIGHEST_PROTOCOL)
 
         '''prepare es indices'''
-        loader = Loader(self.es)
-        overwrite_indices = not dry_run
-        if not dry_run:
-            overwrite_indices = not bool(datasources)
+        loader = Loader(self.es, dry_run=dry_run)
 
-        loader.create_new_index(Config.ELASTICSEARCH_DATA_INDEX_NAME, recreate=overwrite_indices)
+        loader.create_new_index(Config.ELASTICSEARCH_DATA_INDEX_NAME, recreate=False)
         loader.prepare_for_bulk_indexing(loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME))
 
         '''create queues'''
