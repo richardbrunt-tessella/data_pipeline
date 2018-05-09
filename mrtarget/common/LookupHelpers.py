@@ -68,7 +68,6 @@ class LookUpDataType(object):
     EFO = 'efo'
     HPO = 'hpo'
     ECO = 'eco'
-    # PUBLICATION = 'publication'
     MP = 'mp'
     MP_LOOKUP = 'mp_lookup'
     CHEMBL_DRUGS = 'chembl_drugs'
@@ -83,12 +82,9 @@ class LookUpDataRetriever(object):
                  data_types=(LookUpDataType.TARGET,
                              LookUpDataType.DISEASE,
                              LookUpDataType.ECO),
-                 autoload=True,
-                #  es_pub=None,
-                 ):
+                 autoload=True):
 
         self.es = es
-        # self.es_pub = es_pub
         self.r_server = r_server
 
         self.esquery = ESQuery(self.es)
@@ -109,12 +105,16 @@ class LookUpDataRetriever(object):
                        leave=False):
             start_time = time.time()
             if dt == LookUpDataType.TARGET:
+                self._logger.debug("get TARGET info")
                 self._get_gene_info(targets, autoload=autoload)
             elif dt == LookUpDataType.DISEASE:
+                self._logger.debug("get DISEASE info")
                 self._get_available_efos()
             elif dt == LookUpDataType.ECO:
+                self._logger.debug("get ECO info")
                 self._get_available_ecos()
             elif dt == LookUpDataType.MP_LOOKUP:
+                self._logger.debug("get MP_LOOKUP info")
                 self._get_available_mps()
             elif dt == LookUpDataType.MP:
                 self._logger.debug("get MP info")
@@ -125,11 +125,11 @@ class LookUpDataRetriever(object):
             elif dt == LookUpDataType.EFO:
                 self._logger.debug("get EFO info")
                 self._get_efo()
-            # elif dt == LookUpDataType.PUBLICATION:
-            #     self._get_available_publications()
             elif dt == LookUpDataType.CHEMBL_DRUGS:
+                self._logger.debug("get CHEMBL info")
                 self._get_available_chembl_mappings()
             elif dt == LookUpDataType.HPA:
+                self._logger.debug("get HPA info")
                 self._get_available_hpa()
 
             self._logger.info("finished loading %s data into redis, took %ss" % (dt, str(time.time() - start_time)))
@@ -211,7 +211,6 @@ class LookUpDataRetriever(object):
         self.lookup.mp_ontology = obj
 
 
-
     def _get_efo(self):
         '''
         Load EFO current and obsolete classes to report them to data providers
@@ -225,12 +224,6 @@ class LookUpDataRetriever(object):
             obj.rdf_graph = None
             self._set_in_pickled_file_cache(obj, cache_file)
         self.lookup.efo_ontology = obj
-
-
-    # def _get_available_publications(self):
-    #     self._logger.info('getting literature/publications')
-    #     self.lookup.available_publications = LiteratureLookUpTable(self.es_pub, 'LITERATURE_LOOKUP', self.r_server)
-
 
     def _get_from_pickled_file_cache(self, file_id):
         file_path = os.path.join(Config.ONTOLOGY_CONFIG.get('pickle', 'cache_dir'), file_id+'.pck')

@@ -14,16 +14,14 @@ from mrtarget.common import Actions
 from mrtarget.common import TqdmToLogger
 from mrtarget.common.DataStructure import JSONSerializable, PipelineEncoder
 from mrtarget.common.ElasticsearchLoader import Loader, LoaderWorker
-from mrtarget.common.ElasticsearchQuery import ESQuery
 from mrtarget.common.LookupHelpers import LookUpDataRetriever, LookUpDataType
+from mrtarget.common.LookupTables import _iterate_lut_file
 from mrtarget.common.Redis import RedisQueue, RedisQueueStatusReporter, RedisQueueWorkerProcess
-from mrtarget.common.connection import new_es_client
 from mrtarget.modules import GeneData
 from mrtarget.common.Scoring import HarmonicSumScorer
 from mrtarget.modules.ECO import ECO
 from mrtarget.modules.EFO import EFO, get_ontology_code_from_url
 from mrtarget.modules.GeneData import Gene
-# from mrtarget.modules.Literature import Publication, PublicationFetcher
 
 logger = logging.getLogger(__name__)
 tqdm_out = TqdmToLogger(logger, level=logging.INFO)
@@ -1217,9 +1215,7 @@ class EvidenceStringProcess():
                  r_server):
         self.loaded_entries_to_pg = 0
         self.es = es
-        self.es_query = ESQuery(es)
         self.r_server = r_server
-        # self.es_pub = es_pub
         self.logger = logging.getLogger(__name__)
 
     def process_all(self, datasources=[], dry_run=False):
@@ -1233,17 +1229,11 @@ class EvidenceStringProcess():
         self.logger.debug("Starting Evidence Manager")
         '''get lookup data and stats'''
         lookup_data_types = [LookUpDataType.TARGET, LookUpDataType.DISEASE, LookUpDataType.ECO]
-        # if inject_literature:
-        #     lookup_data_types = [LookUpDataType.PUBLICATION, LookUpDataType.TARGET, LookUpDataType.DISEASE,
-        #                          LookUpDataType.ECO]
-        #     # lookup_data_types.append(LookUpDataType.PUBLICATION)
 
         lookup_data = LookUpDataRetriever(self.es,
                                           self.r_server,
                                           data_types=lookup_data_types,
-                                          autoload=True,
-                                        #   es_pub=self.es_pub,
-                                          ).lookup
+                                          autoload=True).lookup
 
         global_stat_cache= 'global_stats.pkl'
         if os.path.exists(global_stat_cache):
@@ -1255,8 +1245,6 @@ class EvidenceStringProcess():
             if self.logger.level == logging.DEBUG:
                 pickle.dump(global_stats, open(global_stat_cache,'w'), protocol=pickle.HIGHEST_PROTOCOL)
 
-        # lookup_data.available_genes.load_uniprot2ensembl()
-        get_evidence_page_size = 5000
         '''prepare es indices'''
         loader = Loader(self.es)
         overwrite_indices = not dry_run
@@ -1270,9 +1258,6 @@ class EvidenceStringProcess():
             recreate=overwrite_indices)
         loader.prepare_for_bulk_indexing(loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME + '-' +
                                                                     Config.DATASOURCE_TO_INDEX_KEY_MAPPING['default']))
-        if datasources and overwrite_indices:
-            self.self.logger.info('deleting data for datasources %s' % ','.join(datasources))
-            self.es_query.delete_evidence_for_datasources(datasources)
 
         '''create queues'''
         self.logger.info('limiting the number or workers to a max of 16 or cpucount')
@@ -1323,12 +1308,10 @@ class EvidenceStringProcess():
             w.start()
 
         targets_with_data = set()
-        for row in tqdm(self.get_evidence(page_size=get_evidence_page_size, datasources=datasources),
-                        desc='Reading available evidence_strings',
-                        total=self.es_query.count_validated_evidence_strings(datasources=datasources),
-                        unit=' evidence',
-                        file=tqdm_out,
-                        unit_scale=True):
+
+        # iterate over all evidences filtered by suffix if necessary
+        self.logger.info("iterate over all evidences filtered by datasources %s", str(datasources))
+        for row in self.get_evidence():
             ev = Evidence(row['evidence_string'], datasource=row['data_source_name'])
             idev = row['uniq_assoc_fields_hashdig']
             ev.evidence['id'] = idev
@@ -1360,24 +1343,15 @@ class EvidenceStringProcess():
 
 
 
-    def get_evidence(self, page_size=5000, datasources=[]):
-
-        c = 0
-        for row in self.es_query.get_validated_evidence_strings(size=page_size, datasources=datasources):
-            c += 1
-            if c % 1e5 == 0:
-                self.logger.debug("loaded %i ev from db to process" % c)
+    def get_evidence(self):
+        for row in _iterate_lut_file(Config.ELASTICSEARCH_VALIDATED_DATA_DOC_NAME):
             yield row
-        self.logger.info("loaded %i ev from db to process" % c)
 
-    def get_global_stats(self, uni2ens, available_genes, non_reference_genes, page_size=5000,):
+
+
+    def get_global_stats(self, uni2ens, available_genes, non_reference_genes):
         global_stats = EvidenceGlobalCounter()
-        for row in tqdm(self.get_evidence(page_size),
-                        desc='getting global stats on  available evidence_strings',
-                        total=self.es_query.count_validated_evidence_strings(),
-                        unit=' evidence',
-                        file=tqdm_out,
-                        unit_scale=True):
+        for row in self.get_evidence():
             ev = Evidence(row['evidence_string'], datasource=row['data_source_name']).evidence
 
             EvidenceManager.fix_target_id(ev, uni2ens, available_genes, non_reference_genes)

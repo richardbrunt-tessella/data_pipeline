@@ -11,14 +11,14 @@ import glob
 import os
 
 
-def _build_lut_name(index_doc_name):
+def _build_lut_name(index_doc_name, suffix='*'):
     '''return a list of data files with names'''
     return glob.glob(Config.OUTPUT_DIR + os.path.sep + \
-                   index_doc_name + '_idx_data_' + Config.RELEASE_VERSION + '_*')
+                   index_doc_name + '_idx_data_' + Config.RELEASE_VERSION + '_' + suffix)
 
 
-def _iterate_lut_file(index_doc_name):
-    for filename in _build_lut_name(index_doc_name):
+def _iterate_lut_file(index_doc_name, suffix='*'):
+    for filename in _build_lut_name(index_doc_name, suffix=suffix):
         with open(filename,'r') as f:
             for el in f:
                 yield json.loads(el)
