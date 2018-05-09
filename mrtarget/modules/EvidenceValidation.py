@@ -24,7 +24,7 @@ import ujson as json
 
 BLOCKSIZE = 65536
 NB_JSON_FILES = 3
-MAX_NB_EVIDENCE_CHUNKS = 1000
+MAX_NB_EVIDENCE_CHUNKS = 10000
 EVIDENCESTRING_VALIDATION_CHUNK_SIZE = 1
 
 
@@ -254,7 +254,7 @@ class FileReaderProcess(RedisQueueWorkerProcess):
 
     def init(self):
         super(FileReaderProcess, self).init()
-        self.loader = Loader(dry_run=self.dry_run, chunk_size=1000)
+        self.loader = Loader(dry_run=self.dry_run)
 
     def close(self):
         super(FileReaderProcess, self).close()
@@ -268,12 +268,14 @@ class ValidatorProcess(RedisQueueWorkerProcess):
                  redis_path,
                  queue_out=None,
                  es=None,
+                 chunk_size=1e5,
                  lookup_data= None,
                  dry_run=False,
                  ):
         super(ValidatorProcess, self).__init__(queue_in, redis_path, queue_out)
         self.es = es
         self.dry_run = dry_run
+        self.chunk_size = chunk_size
         # log accumulator
         self.log_acc = None
         self.loader = None
@@ -288,7 +290,7 @@ class ValidatorProcess(RedisQueueWorkerProcess):
         super(ValidatorProcess, self).init()
         self.logger = logging.getLogger(__name__)
         self.lookup_data.set_r_server(self.get_r_server())
-        self.loader = Loader(dry_run=self.dry_run, chunk_size=1000)
+        self.loader = Loader(dry_run=self.dry_run, chunk_size=self.chunk_size)
         # log accumulator
         self.log_acc = LogAccum(self.logger, 128)
         # generate all validators once
@@ -533,7 +535,7 @@ class EvidenceValidationFileChecker():
     def __init__(self,
                  es,
                  r_server,
-                 chunk_size=1e4,
+                 chunk_size=1e5,
                  dry_run = False,
                  ):
         self.es = es
@@ -574,7 +576,7 @@ class EvidenceValidationFileChecker():
         workers_number = Config.WORKERS_NUMBER
         loaders_number = min([16, int(workers_number/2+1)])
         readers_number = min([workers_number, len(input_files)])
-        max_loader_chunk_size = 1000
+        max_loader_chunk_size = self.chunk_size
         if (MAX_NB_EVIDENCE_CHUNKS / loaders_number) < max_loader_chunk_size:
             max_loader_chunk_size = int(MAX_NB_EVIDENCE_CHUNKS / loaders_number)
 
@@ -586,7 +588,7 @@ class EvidenceValidationFileChecker():
                             max_size=MAX_NB_EVIDENCE_CHUNKS*workers_number,
                             job_timeout=1200)
         store_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|validation_store_q',
-                             max_size=MAX_NB_EVIDENCE_CHUNKS*loaders_number*5,
+                             max_size=MAX_NB_EVIDENCE_CHUNKS*loaders_number,
                              job_timeout=1200)
         # audit_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|validation_audit_q',
         #                      max_size=MAX_NB_EVIDENCE_CHUNKS,
@@ -621,6 +623,7 @@ class EvidenceValidationFileChecker():
                                        None,
                                        store_q,
                                        self.es,
+                                       chunk_size=max_loader_chunk_size,
                                        lookup_data = lookup_data,
                                        dry_run=dry_run,
                                        ) for _ in range(workers_number)]

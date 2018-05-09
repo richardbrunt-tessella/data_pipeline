@@ -205,7 +205,7 @@ def main():
                  Config.REDISLITE_DB_HOST,
                  Config.REDISLITE_DB_PORT)
 
-    connectors = PipelineConnectors()
+    connectors = PipelineConnectors(dry_run=args.dry_run)
 
     if args.loglevel:
         try:
