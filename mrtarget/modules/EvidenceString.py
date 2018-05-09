@@ -1244,8 +1244,7 @@ class EvidenceStringProcess():
             global_stats = self.get_global_stats(lookup_data.uni2ens,
                                                  lookup_data.available_genes,
                                                  lookup_data.non_reference_genes)
-            if self.logger.level == logging.DEBUG:
-                pickle.dump(global_stats, open(global_stat_cache,'w'), protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(global_stats, open(global_stat_cache,'w+'), protocol=pickle.HIGHEST_PROTOCOL)
 
         '''prepare es indices'''
         loader = Loader(self.es, dry_run=dry_run)
@@ -1263,7 +1262,7 @@ class EvidenceStringProcess():
         evidence_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|evidence_q',
                                 max_size=queue_per_worker * number_of_workers,
                                 job_timeout=1200,
-                                batch_size=10,
+                                batch_size=1,
                                 r_server=self.r_server,
                                 serialiser='pickle')
         store_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|store_evidence_q',
@@ -1286,7 +1285,6 @@ class EvidenceStringProcess():
                                     None,
                                     store_q,
                                     lookup_data=lookup_data,
-                                    # inject_literature=inject_literature,
                                     global_stats=global_stats)
                                     for _ in range(number_of_workers)]
         for w in scorers:
@@ -1325,12 +1323,6 @@ class EvidenceStringProcess():
         self.logger.info('collecting reporter')
         q_reporter.join()
 
-
-        self.logger.info('flushing data to index')
-        self.es.indices.flush('%s*' % Loader.get_versioned_index(Config.ELASTICSEARCH_DATA_INDEX_NAME),
-                              wait_if_ongoing=True)
-
-        self.logger.info('Processed data for %i targets' % len(targets_with_data))
         self.logger.info("DONE")
 
         return list(targets_with_data)
