@@ -51,7 +51,7 @@ def new_es_client(hosts=Config.ELASTICSEARCH_NODES):
 
 class PipelineConnectors():
 
-    def __init__(self, dry_run):
+    def __init__(self, dry_run=False):
         """Initialises the class
 
         Declares the connector parts
