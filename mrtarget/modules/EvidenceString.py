@@ -1266,12 +1266,12 @@ class EvidenceStringProcess():
                                 max_size=queue_per_worker * number_of_workers,
                                 job_timeout=1200,
                                 r_server=self.r_server,
-                                serialiser='pickle')
+                                serialiser='json')
         store_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|store_evidence_q',
                              max_size=queue_per_worker * number_of_storers,
                              job_timeout=1200,
                              r_server=self.r_server,
-                             serialiser='pickle')
+                             serialiser='json')
 
         q_reporter = RedisQueueStatusReporter([evidence_q,
                                                store_q,
@@ -1300,8 +1300,6 @@ class EvidenceStringProcess():
         for w in loaders:
             w.start()
 
-        targets_with_data = set()
-
         # iterate over all evidences filtered by suffix if necessary
         self.logger.info("iterate over all evidences filtered by datasources %s", str(datasources))
         for row in self.get_evidence():
@@ -1309,7 +1307,6 @@ class EvidenceStringProcess():
             idev = row['uniq_assoc_fields_hashdig']
             ev.evidence['id'] = idev
             evidence_q.put((idev, ev))
-            targets_with_data.add(ev.evidence['target']['id'][0])
 
         evidence_q.set_submission_finished()
 
@@ -1325,10 +1322,6 @@ class EvidenceStringProcess():
         q_reporter.join()
 
         self.logger.info("DONE")
-
-        return list(targets_with_data)
-
-
 
     def get_evidence(self):
         for row in _iterate_lut_file(Config.ELASTICSEARCH_VALIDATED_DATA_DOC_NAME):

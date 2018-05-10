@@ -10,18 +10,23 @@ import ujson as json
 import glob
 import os
 
+logger = logging.getLogger(__name__)
 
-def _build_lut_name(index_doc_name, suffix='*'):
+def _build_lut_name(index_doc_name):
     '''return a list of data files with names'''
     return glob.glob(Config.OUTPUT_DIR + os.path.sep + \
-                   index_doc_name + '_idx_data_' + Config.RELEASE_VERSION + '_' + suffix)
+                   index_doc_name + '_idx_data_' + Config.RELEASE_VERSION + '_*')
 
 
-def _iterate_lut_file(index_doc_name, suffix='*'):
-    for filename in _build_lut_name(index_doc_name, suffix=suffix):
+def _iterate_lut_file(index_doc_name):
+    for filename in _build_lut_name(index_doc_name):
+        logger.debug("evidence filename %s to load line by line", filename)
+        lines_read = 0
         with open(filename,'r') as f:
-            for el in f:
+            for i, el in enumerate(f, start=1):
                 yield json.loads(el)
+                lines_read = i
+        logger.debug("evidence filename %s closed with a total of %d lines read", filename, lines_read)
 
 
 class HPALookUpTable(object):
