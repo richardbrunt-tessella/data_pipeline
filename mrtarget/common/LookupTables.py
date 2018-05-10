@@ -9,6 +9,7 @@ from mrtarget.common import TqdmToLogger
 import ujson as json
 import glob
 import os
+import fileinput
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +20,11 @@ def _build_lut_name(index_doc_name):
 
 
 def _iterate_lut_file(index_doc_name):
-    for filename in _build_lut_name(index_doc_name):
-        logger.debug("evidence filename %s to load line by line", filename)
-        lines_read = 0
-        with open(filename,'r') as f:
-            for i, el in enumerate(f, start=1):
-                yield json.loads(el)
-                lines_read = i
-        logger.debug("evidence filename %s closed with a total of %d lines read", filename, lines_read)
+    for i, el in enumerate(fileinput.input(_build_lut_name(index_doc_name)), start=1):
+        if i % 100000 == 0:
+            logger.debug("evidences read at this point %d", i)
+
+        yield json.loads(el)
 
 
 class HPALookUpTable(object):
