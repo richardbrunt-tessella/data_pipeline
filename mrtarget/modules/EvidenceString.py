@@ -1095,7 +1095,7 @@ class EvidenceProcesser(RedisQueueWorkerProcess):
             Config.ELASTICSEARCH_DATA_INDEX_NAME,
             ev.get_doc_name(),
             idev,
-            ev,
+            ev.evidence,
         )
         # remove routing doesnt make sense with one node
         # loader_kwargs = dict(create_index=False,
