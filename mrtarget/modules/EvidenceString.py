@@ -1244,8 +1244,10 @@ class EvidenceStringProcess():
             global_stats = self.get_global_stats(lookup_data.uni2ens,
                                                  lookup_data.available_genes,
                                                  lookup_data.non_reference_genes)
-            self.logger.info("dump to file the global stats")
-            pickle.dump(global_stats, open(global_stat_cache,'w+'), protocol=pickle.HIGHEST_PROTOCOL)
+
+            if self.logger.level == logging.DEBUG:
+                self.logger.info("dump to file the global stats")
+                pickle.dump(global_stats, open(global_stat_cache,'w+'), protocol=pickle.HIGHEST_PROTOCOL)
 
         '''prepare es indices'''
         loader = Loader(self.es, dry_run=dry_run)
