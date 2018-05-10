@@ -1263,13 +1263,11 @@ class EvidenceStringProcess():
         evidence_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|evidence_q',
                                 max_size=queue_per_worker * number_of_workers,
                                 job_timeout=1200,
-                                batch_size=1,
                                 r_server=self.r_server,
                                 serialiser='pickle')
         store_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|store_evidence_q',
-                             max_size=queue_per_worker * 2 * number_of_storers,
+                             max_size=queue_per_worker * number_of_storers,
                              job_timeout=1200,
-                             batch_size=10,
                              r_server=self.r_server,
                              serialiser='pickle')
 
