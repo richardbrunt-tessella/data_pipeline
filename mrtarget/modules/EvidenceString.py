@@ -1265,13 +1265,11 @@ class EvidenceStringProcess():
         evidence_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|evidence_q',
                                 max_size=queue_per_worker * number_of_workers,
                                 job_timeout=1200,
-                                r_server=self.r_server,
-                                serialiser='json')
+                                r_server=self.r_server)
         store_q = RedisQueue(queue_id=Config.UNIQUE_RUN_ID + '|store_evidence_q',
                              max_size=queue_per_worker * number_of_storers,
                              job_timeout=1200,
-                             r_server=self.r_server,
-                             serialiser='json')
+                             r_server=self.r_server)
 
         q_reporter = RedisQueueStatusReporter([evidence_q,
                                                store_q,
