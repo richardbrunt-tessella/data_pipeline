@@ -623,59 +623,6 @@ class EvidenceManager():
         if target_class['level1']:
             extended_evidence['private']['facets']['target_class'] = target_class
 
-        # ''' Add literature data '''
-        # if inject_literature:
-        #     if 'literature' in extended_evidence and \
-        #                     'references' in extended_evidence['literature']:
-        #         try:
-        #             pmid_url = extended_evidence['literature']['references'][0]['lit_id']
-        #             pmid = pmid_url.split('/')[-1]
-        #             pub = None
-        #             if pmid in self.available_publications:
-        #                 pub = self.available_publications[pmid]
-        #             else:
-        #                 try:
-        #                     pub_dict = pub_fetcher.get_publications(pmid)
-        #                     if pub_dict:
-        #                         pub = pub_dict[pmid]
-        #                 except KeyError as e:
-        #                     self.logger.warning('Cannot find publication %s in elasticsearch. Not injecting data' % pmid)
-
-        #             if pub is not None:
-        #                 literature_info = ExtendedInfoLiterature(pub)
-        #                 extended_evidence['literature']['date'] = literature_info.data['date']
-        #                 extended_evidence['literature']['abstract'] = literature_info.data['abstract']
-        #                 extended_evidence['literature']['journal_data'] = literature_info.data['journal']
-        #                 extended_evidence['literature']['title'] = literature_info.data['title']
-        #                 journal_reference = ''
-        #                 if 'journal_reference' in literature_info.data and  literature_info.data['journal_reference']:
-        #                     if 'volume' in literature_info.data['journal_reference']:
-        #                         journal_reference += literature_info.data['journal_reference']['volume']
-        #                     if 'issue' in literature_info.data['journal_reference']:
-        #                         journal_reference += "(%s)" % literature_info.data['journal_reference']['issue']
-        #                     if  'pgn' in literature_info.data['journal_reference']:
-        #                         journal_reference += ":%s" % literature_info.data['journal_reference']['pgn']
-        #                 extended_evidence['literature']['journal_reference'] = journal_reference
-        #                 extended_evidence['literature']['authors'] = literature_info.data['authors']
-        #                 extended_evidence['private']['facets']['literature'] = {}
-        #                 extended_evidence['literature']['doi'] = literature_info.data.get('doi')
-        #                 extended_evidence['literature']['pub_type'] = literature_info.data.get('pub_type')
-        #                 extended_evidence['private']['facets']['literature'][
-        #                     'mesh_headings'] = literature_info.data.get(
-        #                     'mesh_headings')
-        #                 extended_evidence['private']['facets']['literature']['chemicals'] = literature_info.data.get(
-        #                     'chemicals')
-        #                 extended_evidence['private']['facets']['literature']['noun_chunks'] = literature_info.data.get(
-        #                     'noun_chunks')
-        #                 extended_evidence['private']['facets']['literature']['top_chunks'] = literature_info.data.get(
-        #                     'top_chunks')
-        #                 extended_evidence['private']['facets']['literature']['keywords'] = literature_info.data.get(
-        #                     'keywords')
-
-        #         except Exception:
-        #             self.logger.exception(
-        #                 'Error in publication data injection - skipped for evidence id: ' + extended_evidence['id'])
-
         return Evidence(extended_evidence)
 
     def _get_gene_obj(self, geneid):
@@ -754,10 +701,6 @@ class Evidence(JSONSerializable):
         self._set_datatype()
 
     def _set_datatype(self, ):
-
-        # if 'type' in self.evidence:
-        #     self.datatype = self.evidence['type']
-        # else:
         translate_database = Config.DATASOURCE_TO_DATATYPE_MAPPING
         try:
             self.database = self.evidence['sourceID'].lower()
@@ -773,6 +716,9 @@ class Evidence(JSONSerializable):
 
     def to_json(self):
         self.stamp_data_release()
+        # this is a tricky way to get the doc_id inserted
+        # as all this code is already tricky by its own
+        self.evidence['doc_id'] = self.evidence['id']
         return json.dumps(self.evidence,
                           sort_keys=True,
                           # indent=4,
@@ -964,43 +910,6 @@ class Evidence(JSONSerializable):
         # normalised_pvalue, sample_size,normalised_sample_size, severity))
         return score
 
-    # def _score_postgap(self):
-    #     """Calculate the variant-to-gene score for a row.
-    #
-    #     Arguments:
-    #     r       -- A row from a pandas DataFrame of the POSTGAP data.
-    #     vep_map -- A dict of numeric values associated with VEP terms
-    #
-    #     Returns:
-    #     v2g     -- The variant-to-gene score.
-    #     """
-    #     GTEX_CUTOFF = 0.999975
-    #     # K = 0.1 / 0.35
-    #     # VEP_THRESHOLD = 0.65
-    #
-    #     # stage 1 cannot being implemented on the evs because evs doesn't contain vep defs
-    #     # if not pd.isnull(r.vep_terms):
-    #     #     vep_terms = r.vep_terms.split(',')
-    #     #     vep_score = max([
-    #     #         0 if t == 'start_retained_variant' else vep_map[t]  # start_retained_variant needs adding to map
-    #     #         for t in vep_terms
-    #     #     ])
-    #     #     if vep_score >= VEP_THRESHOLD:
-    #     #         return (K * (vep_score - VEP_THRESHOLD)) + 0.9
-    #
-    #     # stage 2
-    #     if (r.GTEx > GTEX_CUTOFF) or (r.PCHiC > 0) or (r.DHS > 0) or (r.Fantom5 > 0):
-    #         gtex = 1 if (r.GTEx > GTEX_CUTOFF) else 0
-    #         pchic = 1 if (r.PCHiC > 0) else 0
-    #         dhs = 1 if (r.DHS > 0) else 0
-    #         fantom5 = 1 if (r.Fantom5 > 0) else 0
-    #         vep_score = ((gtex * 13) + (fantom5 * 3) + (dhs * 1.5) + (pchic * 1.5)) / 19
-    #         return vep_score * 0.4 + 0.5
-    #
-    #     # stage 3
-    #     if (r.Nearest > 0):
-    #         return 0.5
-
     def _score_phewas_data(self, source, pvalue, no_of_cases):
         if source == 'phewas_catalog':
             max_cases = 8800
@@ -1014,34 +923,6 @@ class Evidence(JSONSerializable):
         normalised_no_of_cases = DataNormaliser.renormalize(no_of_cases, [0, max_cases], [0, 1])
         score = normalised_pvalue * normalised_no_of_cases
         return score
-
-
-class UploadError():
-    def __init__(self, evidence, trace, id, logdir='errorlogs'):
-        self.trace = trace
-        if isinstance(evidence, Evidence):
-            self.evidence = evidence.evidence
-        elif isinstance(evidence, str):
-            self.evidence = evidence
-        else:
-            self.evidence = repr(evidence)
-        self.id = id
-        try:
-            self.database = evidence['sourceID']
-        except:
-            self.database = 'unknown'
-        self.logdir = logdir
-
-    def save(self):
-        pass
-        # dir = os.path.join(self.logdir, self.database)
-        # if not os.path.exists(self.logdir):
-        #     os.mkdir(self.logdir)
-        # if not os.path.exists(dir):
-        #     os.mkdir(dir)
-        # filename = str(os.path.join(dir, self.id))
-        # pickle.dump(self, open(filename + '.pkl', 'w'))
-        # json.dump(self.evidence, open(filename + '.json', 'w'))
 
 
 class EvidenceProcesser(RedisQueueWorkerProcess):
@@ -1062,19 +943,13 @@ class EvidenceProcesser(RedisQueueWorkerProcess):
         self.es = None
         self.loader = None
         self.lookup_data = lookup_data
-        # self.evidence_manager = EvidenceManager(lookup_data)
         self.evidence_manager = None
-        # self.inject_literature = inject_literature
-        # self.pub_fetcher = None
         self.global_stats = global_stats
 
     def init(self):
         super(EvidenceProcesser, self).init()
         self.logger = logging.getLogger(__name__)
         self.lookup_data.set_r_server(self.get_r_server())
-        # self.pub_fetcher = PublicationFetcher(new_es_client(hosts=Config.ELASTICSEARCH_NODES_PUB))
-
-        # moved from __init__ as this is executed on a process so it should need be process mem
         self.evidence_manager = EvidenceManager(self.lookup_data)
 
     def process(self, data):
