@@ -3,6 +3,7 @@ from collections import defaultdict
 import time
 import logging
 import tempfile
+import os
 import json
 import itertools as itt
 from elasticsearch.exceptions import NotFoundError
@@ -172,9 +173,9 @@ class Loader():
                 # create a temporal file if necessary
                 if (k not in self._tmp_fd) and self._tmp_fd_path is not None:
                     import uuid
-
-                    self._tmp_fd[k] = open(self._tmp_fd_path + '/' + self._tmp_fd_prefix + '_idx_data_' +
-                        k + '_' + str(uuid.uuid4()) + '.json', 'w+')
+                    filename = os.path.join(os.path.abspath(self._tmp_fd_path),self._tmp_fd_prefix + '_idx_data_' +
+                        k + '_' + str(uuid.uuid4()) + '.json')
+                    self._tmp_fd[k] = open(filename, 'w+')
                     self.logger.info('create temporary file to output '
                                      'generated index docs while dry_run '
                                      'is activated with file %s',
@@ -247,8 +248,13 @@ class Loader():
 
 
     def _file_create_index(self, index_name, body={}):
-        filename = self._tmp_fd_path + '/' + self._tmp_fd_prefix + '_idx_conf_' + index_name + '.json'
+        filename = os.path.join(os.path.abspath(self._tmp_fd_path), self._tmp_fd_prefix + '_idx_conf_' + index_name + '.json')
         self.logger.info("creating index %s", filename)
+        #ensure the directory exists
+        dir = os.path.dirname(filename)
+        if not os.path.exists(dir):
+                os.makedirs(dir)
+        #now the file can be safetly opened
         with open(filename, 'w+') as f:
             f.writelines([json.dumps(body) + '\n'])
 

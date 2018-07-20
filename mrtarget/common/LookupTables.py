@@ -15,8 +15,11 @@ logger = logging.getLogger(__name__)
 
 def _build_lut_name(index_doc_name):
     '''return a list of data files with names'''
-    return glob.glob(Config.OUTPUT_DIR + os.path.sep + \
-                   index_doc_name + '_idx_data_' + Config.RELEASE_VERSION + '_*')
+    index_glob_path = os.path.join(os.path.abspath(Config.OUTPUT_DIR), index_doc_name + '_idx_data_' + Config.RELEASE_VERSION + '_*')
+    filenames = glob.glob(index_glob_path)
+    if len(filenames) == 0:
+        raise ValueError("Expected at least one file matching %s", index_glob_path)
+    return filenames
 
 
 def _iterate_lut_file(index_doc_name):
